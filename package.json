@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "tsx watch src/server.ts"
+    "dev": "tsx watch src/server.ts",
+    "worker": "tsx watch src/queue/worker.ts"
   },
   "keywords": [],
   "author": "",
@@ -15,7 +16,8 @@
     "@google/genai": "^2.18.0",
     "bullmq": "^6.2.0",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "ioredis": "^6.0.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
