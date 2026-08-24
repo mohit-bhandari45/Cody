@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express, { Request, Response } from "express";
 import { verifyGithubSignature } from "./verifySignature";
+import { fetchPullRequestFiles } from "./github/fetchDiff";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,9 +24,7 @@ app.get("/health", (_req: Request, res: Response) => {
     res.status(200).json({ status: "ok" });
 });
 
-app.post("/webhook", (req: Request, res: Response) => {
-    console.log("Headers received:", req.headers);
-
+app.post("/webhook", async (req: Request, res: Response) => {
     const signature = req.header("x-hub-signature-256");
     const event = req.header("x-github-event");
     const rawBody = (req as any).rawBody as Buffer;
@@ -53,8 +52,22 @@ app.post("/webhook", (req: Request, res: Response) => {
     const repo = req.body.repository;
 
     console.log(`[pull_request:${action}] ${repo.full_name} #${pr.number} — "${pr.title}"`);
-    console.log(`  Diff URL: ${pr.diff_url}`);
-    console.log(`  Head SHA: ${pr.head.sha}`);
+
+    try {
+        const files = await fetchPullRequestFiles(
+            repo.owner.login,
+            repo.name,
+            pr.number
+        );
+
+        console.log(`Fetched ${files.length} changed file(s):`);
+        for (const file of files) {
+            console.log(`  - ${file.filename} (${file.status}, +${file.additions}/-${file.deletions})`);
+            console.log(`    Patch:\n${file.patch ?? "(no patch available)"}`);
+        }
+    } catch (err) {
+        console.error("Failed to fetch PR files:", err);
+    }
 })
 
 app.listen(PORT, () => {
