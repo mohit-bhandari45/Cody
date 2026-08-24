@@ -2,13 +2,27 @@ import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({apiKey: process.env.GEMINI_API_KEY});
 
-export async function reviewDiff(diffText: string): Promise<string> {
+export interface ReviewResult {
+    summary: string;
+    issues: {
+        severity: "bug" | "style" | "suggestion",
+        description: string
+    }[];
+}
+
+export async function reviewDiff(diffText: string): Promise<ReviewResult> {
     const prompt = `
         You are a senior software engineer reviewing a pull request.
-        Given the following code diff, provide:
-        1. A short summary of what changed.
-        2. Any potential bugs or logic issues.
-        3. Any style or readability concerns.
+
+        Analyze the following diff and respond wiht ONLY valid json(no markdown, no code fences, no extra text) matching this exact shape:
+        {
+            "summary": "a short 1-2 sentence summary of what changed",
+            "issues": [
+                { "severity": "bug" | "style" | "suggestion" , "description": "..." }
+            ]
+        }
+
+        If there are no issues, return an empty array for "issues".
 
         Diff:
         ${diffText}
@@ -19,6 +33,16 @@ export async function reviewDiff(diffText: string): Promise<string> {
         contents: prompt,
     })
 
-    return response.text ?? "(no response from the model)";
+    const rawText = response.text ?? "{}";
+    const cleaned = rawText.replace(/```json\n?|```/g, "").trim();
+
+
+
+    try {
+    return JSON.parse(cleaned) as ReviewResult;
+  } catch (err) {
+    console.error("Failed to parse LLM response as JSON:", rawText);
+    return { summary: "Failed to parse review.", issues: [] };
+  }
 }
 
