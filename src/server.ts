@@ -4,6 +4,7 @@ import { verifyGithubSignature } from "./verifySignature";
 import { fetchPullRequestFiles, postPullRequestComment } from "./github/githubapis";
 import { combineFilesIntoDiffText, formatReviewComment } from "./github/helper";
 import { reviewDiff } from "./llm/client";
+import { reviewQueue } from "./queue/reviewQueue";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
