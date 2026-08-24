@@ -2,6 +2,7 @@ import "dotenv/config";
 import express, { Request, Response } from "express";
 import { verifyGithubSignature } from "./verifySignature";
 import { fetchPullRequestFiles } from "./github/fetchDiff";
+import { combineFilesIntoDiffText, reviewDiff } from "./llm/client";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -61,10 +62,12 @@ app.post("/webhook", async (req: Request, res: Response) => {
         );
 
         console.log(`Fetched ${files.length} changed file(s):`);
-        for (const file of files) {
-            console.log(`  - ${file.filename} (${file.status}, +${file.additions}/-${file.deletions})`);
-            console.log(`    Patch:\n${file.patch ?? "(no patch available)"}`);
-        }
+
+        const combinedDiff = combineFilesIntoDiffText(files);
+        const review = await reviewDiff(combinedDiff);
+
+        console.log("Review summary:", review.summary);
+        console.log("Issues found:", review.issues);
     } catch (err) {
         console.error("Failed to fetch PR files:", err);
     }

@@ -1,6 +1,15 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({apiKey: process.env.GEMINI_API_KEY});
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+export function combineFilesIntoDiffText(
+    files: { filename: string, patch?: string }[]
+): string {
+    return files
+        .filter((f) => f.patch)
+        .map((f) => `File: ${f.filename}\n${f.patch}`)
+        .join("\n\n")
+}
 
 export interface ReviewResult {
     summary: string;
@@ -36,13 +45,11 @@ export async function reviewDiff(diffText: string): Promise<ReviewResult> {
     const rawText = response.text ?? "{}";
     const cleaned = rawText.replace(/```json\n?|```/g, "").trim();
 
-
-
     try {
-    return JSON.parse(cleaned) as ReviewResult;
-  } catch (err) {
-    console.error("Failed to parse LLM response as JSON:", rawText);
-    return { summary: "Failed to parse review.", issues: [] };
-  }
+        return JSON.parse(cleaned) as ReviewResult;
+    } catch (err) {
+        console.error("Failed to parse LLM response as JSON:", rawText);
+        return { summary: "Failed to parse review.", issues: [] };
+    }
 }
 
