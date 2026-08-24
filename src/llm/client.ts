@@ -2,15 +2,6 @@ import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-export function combineFilesIntoDiffText(
-    files: { filename: string, patch?: string }[]
-): string {
-    return files
-        .filter((f) => f.patch)
-        .map((f) => `File: ${f.filename}\n${f.patch}`)
-        .join("\n\n")
-}
-
 export interface ReviewResult {
     summary: string;
     issues: {
