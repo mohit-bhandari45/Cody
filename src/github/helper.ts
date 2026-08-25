@@ -12,11 +12,27 @@ const IGNORERD_FILE_PATTERNS: RegExp[] = [
     /\.(png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/,
 ]
 
+/**
+ * Helper function to ignoring large diff files with bad patch
+ */
+function isNoiseFile(filename: string): boolean {
+    return IGNORERD_FILE_PATTERNS.some((pattern) => pattern.test(filename));
+}
+
 export function combineFilesIntoDiffText(
     files: { filename: string, patch?: string }[]
 ): string {
-    return files
-        .filter((f) => f.patch)
+    const relevantFiles = files.filter((f) => {
+        if(!f.patch) return false;
+
+        if(isNoiseFile(f.filename)) {
+            console.log(`Skipping noise file: ${f.filename}`);
+            return false;
+        }
+
+        return true;
+    })
+    return relevantFiles
         .map((f) => `File: ${f.filename}\n${f.patch}`)
         .join("\n\n")
 }
@@ -33,11 +49,4 @@ export function formatReviewComment(review: ReviewResult): string {
         .join("\n");
 
     return `${header}\n\n### Issues\n${issueLines}`
-}
-
-/**
- * Helper function to ignoring large diff files with bad patch
- */
-function isNoiseFile(filename: string): boolean {
-    return IGNORERD_FILE_PATTERNS.some((pattern) => pattern.test(filename));
 }
