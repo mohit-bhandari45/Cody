@@ -6,7 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx watch src/server.ts",
-    "worker": "tsx watch src/queue/worker.ts"
+    "worker": "tsx watch src/queue/worker.ts",
+    "build": "tsc",
+    "start:all": "concurrently \"node dist/server.js\" \"node dist/queue/worker.js\""
   },
   "keywords": [],
   "author": "",
