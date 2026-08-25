@@ -32,7 +32,7 @@ async function processReviewJob(
     console.log(`Posted review comment for #${pullNumber}`);
 }
 
-const worker = new Worker("review-queue", processReviewJob, { connection, concurrency: 2 });
+const worker = new Worker<ReviewJobData>("review-queue", processReviewJob, { connection, concurrency: 2 });
 
 worker.on("completed", (job) => {
     console.log(`Job ${job.id} completed successfully.`);

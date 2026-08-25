@@ -57,31 +57,15 @@ app.post("/webhook", async (req: Request, res: Response) => {
     console.log(`[pull_request:${action}] ${repo.full_name} #${pr.number} — "${pr.title}"`);
 
     try {
-        const files = await fetchPullRequestFiles(
-            repo.owner.login,
-            repo.name,
-            pr.number
-        );
+        await reviewQueue.add("review-pr", {
+            owner: repo.owner.login,
+            repo: repo.name,
+            pullNumber: pr.number
+        });
 
-        console.log(`Fetched ${files.length} changed file(s):`);
-
-        const combinedDiff = combineFilesIntoDiffText(files);
-        const review = await reviewDiff(combinedDiff);
-
-        console.log("Review summary:", review.summary);
-        console.log("Issues found:", review.issues);
-
-        const commentBody = formatReviewComment(review);
-        await postPullRequestComment(
-            repo.owner.login,
-            repo.name,
-            pr.number,
-            commentBody
-        );
-
-        console.log("Posted review comment to PR.");
+        console.log(`Enqueued review job for #${pr.number}`);
     } catch (err) {
-        console.error("Failed to fetch PR files:", err);
+        console.error("Failed to enqueue review job:", err);
     }
 })
 
