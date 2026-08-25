@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PR Review Bot — Live Dashboard</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      padding: 2rem;
+    }
+    h1 { font-size: 1.5rem; }
+    .job {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .stage {
+      display: inline-block;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .started { background: #1f6feb33; color: #58a6ff; }
+    .fetched { background: #9e6a0333; color: #d29922; }
+    .reviewed { background: #8250df33; color: #a371f7; }
+    .completed { background: #23863633; color: #3fb950; }
+  </style>
+</head>
+<body>
+  <h1>🤖 PR Review Bot — Live Jobs</h1>
+  <div id="jobs"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const jobsContainer = document.getElementById("jobs");
+    const jobElements = {};
+
+    socket.on("job-update", (event) => {
+      let el = jobElements[event.jobId];
+
+      if (!el) {
+        el = document.createElement("div");
+        el.className = "job";
+        jobElements[event.jobId] = el;
+        jobsContainer.prepend(el);
+      }
+
+      const dataStr = event.data ? JSON.stringify(event.data) : "";
+      el.innerHTML = `
+        <div><strong>Job ${event.jobId}</strong></div>
+        <span class="stage ${event.stage}">${event.stage}</span>
+        <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #8b949e;">${dataStr}</div>
+      `;
+    });
+
+    socket.on("connect", () => console.log("Connected to dashboard server"));
+  </script>
+</body>
+</html>

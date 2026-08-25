@@ -1,12 +1,18 @@
 import "dotenv/config";
 import express, { Request, Response } from "express";
-import { verifyGithubSignature } from "./verifySignature";
-import { fetchPullRequestFiles, postPullRequestComment } from "./github/githubapis";
-import { combineFilesIntoDiffText, formatReviewComment } from "./github/helper";
-import { reviewDiff } from "./llm/client";
 import { reviewQueue } from "./queue/reviewQueue";
+import { verifyGithubSignature } from "./verifySignature";
+import { Server } from "socket.io";
+import { createServer } from "http";
+import Redis from "ioredis";
+import path from "path";
+
 
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+    cors: { origin: "*" }
+})
 const PORT = process.env.PORT || 3000;
 const WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
 
@@ -22,6 +28,7 @@ app.use(
         },
     })
 );
+app.use(express.static(path.join(__dirname, "../public")));
 
 app.get("/health", (_req: Request, res: Response) => {
     res.status(200).json({ status: "ok" });
@@ -69,6 +76,24 @@ app.post("/webhook", async (req: Request, res: Response) => {
     }
 })
 
-app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
+const subscriber = new Redis(process.env.REDIS_URL!);
+subscriber.subscribe("job-updates");
+
+subscriber.on("message", (channel, message) => {
+    if(channel === "job-updates") {
+        const event = JSON.parse(message);
+        io.emit("job-update", event);
+    }
+})
+
+io.on("connection", (socket) => {
+    console.log(`Dashboard connected: ${socket.id}`);
+
+    socket.on("disconnect", () =>{
+        console.log(`Dashboard disconnected: ${socket.id}`);
+    });
+})
+
+httpServer.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
 });
