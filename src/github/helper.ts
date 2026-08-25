@@ -1,5 +1,17 @@
 import { ReviewResult } from "../llm/client";
 
+const IGNORERD_FILE_PATTERNS: RegExp[] = [
+    /package-lock\.json$/,
+    /yarn\.lock$/,
+    /pnpm-lock\.yaml$/,
+    /\.min\.js$/,
+    /\.min\.css$/,
+    /dist\//,
+    /build\//,
+    /node_modules\//,
+    /\.(png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/,
+]
+
 export function combineFilesIntoDiffText(
     files: { filename: string, patch?: string }[]
 ): string {
@@ -21,4 +33,11 @@ export function formatReviewComment(review: ReviewResult): string {
         .join("\n");
 
     return `${header}\n\n### Issues\n${issueLines}`
+}
+
+/**
+ * Helper function to ignoring large diff files with bad patch
+ */
+function isNoiseFile(filename: string): boolean {
+    return IGNORERD_FILE_PATTERNS.some((pattern) => pattern.test(filename));
 }
