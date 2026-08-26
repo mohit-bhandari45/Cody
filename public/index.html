@@ -1,65 +1,470 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>PR Review Bot — Live Dashboard</title>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      background: #0d1117;
-      color: #e6edf3;
-      padding: 2rem;
-    }
-    h1 { font-size: 1.5rem; }
-    .job {
-      background: #161b22;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      padding: 1rem;
-      margin-bottom: 1rem;
-    }
-    .stage {
-      display: inline-block;
-      padding: 0.25rem 0.6rem;
-      border-radius: 999px;
-      font-size: 0.8rem;
-      font-weight: 600;
-    }
-    .started { background: #1f6feb33; color: #58a6ff; }
-    .fetched { background: #9e6a0333; color: #d29922; }
-    .reviewed { background: #8250df33; color: #a371f7; }
-    .completed { background: #23863633; color: #3fb950; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>pr-bot // live</title>
+<style>
+  :root {
+    --bg: #0a0e14;
+    --panel: #10151d;
+    --line: #1c2430;
+    --text: #c9d1d9;
+    --dim: #5b6472;
+    --mono: 'IBM Plex Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+    --c-started: #58a6ff;
+    --c-fetched: #d29922;
+    --c-reviewed: #a371f7;
+    --c-completed: #56d364;
+    --c-failed: #f85149;
+    --c-add: #56d364;
+    --c-del: #f85149;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+  }
+
+  /* subtle scanline / grid texture to reinforce the terminal feel */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 48px 48px;
+    opacity: 0.15;
+  }
+
+  header {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.4rem 2rem;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, #0d1219, transparent);
+  }
+
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+  }
+
+  .brand .dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--dim);
+    display: inline-block;
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+  .brand .dot.live {
+    background: var(--c-completed);
+    box-shadow: 0 0 8px var(--c-completed);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  h1 {
+    font-family: var(--mono);
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin: 0;
+    color: #e6edf3;
+  }
+  h1 span { color: var(--dim); font-weight: 400; }
+
+  .conn-label {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--dim);
+  }
+
+  main {
+    position: relative;
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  /* --- stats strip --- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 2.5rem;
+  }
+  .stat {
+    background: var(--panel);
+    padding: 1rem 1.2rem;
+  }
+  .stat .num {
+    font-family: var(--mono);
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #e6edf3;
+    line-height: 1;
+  }
+  .stat .label {
+    margin-top: 0.35rem;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--dim);
+  }
+  .stat.issues .num { color: var(--c-fetched); }
+
+  /* --- section label --- */
+  .section-label {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .section-label::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
+
+  /* --- empty state --- */
+  .empty {
+    font-family: var(--mono);
+    color: var(--dim);
+    font-size: 0.85rem;
+    padding: 3rem 1rem;
+    text-align: center;
+    border: 1px dashed var(--line);
+    border-radius: 10px;
+  }
+  .empty .cursor {
+    display: inline-block;
+    width: 7px; height: 1em;
+    background: var(--dim);
+    margin-left: 3px;
+    animation: blink 1s steps(1) infinite;
+    vertical-align: text-bottom;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* --- job timeline (signature element) --- */
+  #jobs { position: relative; }
+
+  .job {
+    position: relative;
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    gap: 0 1.1rem;
+    padding-bottom: 1.6rem;
+  }
+  .job:last-child { padding-bottom: 0; }
+
+  .rail {
+    position: relative;
+    display: flex;
+    justify-content: center;
+  }
+  .rail::before {
+    content: "";
+    position: absolute;
+    top: 22px;
+    bottom: -1.6rem;
+    width: 1px;
+    background: var(--line);
+  }
+  .job:last-child .rail::before { display: none; }
+
+  .node {
+    width: 13px; height: 13px;
+    border-radius: 50%;
+    border: 2px solid var(--dim);
+    background: var(--bg);
+    margin-top: 4px;
+    z-index: 1;
+    transition: border-color 0.25s, background 0.25s, box-shadow 0.25s;
+  }
+  .node.started   { border-color: var(--c-started); }
+  .node.fetched   { border-color: var(--c-fetched); }
+  .node.reviewed  { border-color: var(--c-reviewed); }
+  .node.completed { border-color: var(--c-completed); background: var(--c-completed); box-shadow: 0 0 10px var(--c-completed); }
+  .node.failed    { border-color: var(--c-failed); background: var(--c-failed); box-shadow: 0 0 10px var(--c-failed); }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 0.95rem 1.1rem;
+  }
+
+  .card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .repo {
+    font-family: var(--mono);
+    font-size: 0.88rem;
+    color: #e6edf3;
+  }
+  .repo .pr-num { color: var(--dim); }
+
+  .badge {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    white-space: nowrap;
+    border: 1px solid transparent;
+  }
+  .badge.started   { color: var(--c-started);   background: color-mix(in srgb, var(--c-started) 15%, transparent);   border-color: color-mix(in srgb, var(--c-started) 35%, transparent); }
+  .badge.fetched   { color: var(--c-fetched);   background: color-mix(in srgb, var(--c-fetched) 15%, transparent);   border-color: color-mix(in srgb, var(--c-fetched) 35%, transparent); }
+  .badge.reviewed  { color: var(--c-reviewed);  background: color-mix(in srgb, var(--c-reviewed) 15%, transparent);  border-color: color-mix(in srgb, var(--c-reviewed) 35%, transparent); }
+  .badge.completed { color: var(--c-completed); background: color-mix(in srgb, var(--c-completed) 15%, transparent); border-color: color-mix(in srgb, var(--c-completed) 35%, transparent); }
+  .badge.failed    { color: var(--c-failed);    background: color-mix(in srgb, var(--c-failed) 15%, transparent);    border-color: color-mix(in srgb, var(--c-failed) 35%, transparent); }
+
+  .meta-row {
+    margin-top: 0.6rem;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--dim);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9rem;
+  }
+  .meta-row b { color: var(--text); font-weight: 500; }
+  .meta-row .add { color: var(--c-add); }
+  .meta-row .del { color: var(--c-del); }
+
+  /* thin progress track under active jobs */
+  .track {
+    margin-top: 0.75rem;
+    height: 3px;
+    background: var(--line);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .track-fill {
+    height: 100%;
+    width: 25%;
+    background: var(--c-started);
+    border-radius: 999px;
+    transition: width 0.4s ease, background 0.4s ease;
+  }
+</style>
 </head>
 <body>
-  <h1>🤖 PR Review Bot — Live Jobs</h1>
+
+<header>
+  <div class="brand">
+    <span class="dot" id="conn-dot"></span>
+    <h1>pr-bot <span>// live review feed</span></h1>
+  </div>
+  <span class="conn-label" id="conn-label">connecting…</span>
+</header>
+
+<main>
+  <div class="stats">
+    <div class="stat">
+      <div class="num" id="stat-total">0</div>
+      <div class="label">Jobs today</div>
+    </div>
+    <div class="stat">
+      <div class="num" id="stat-active">0</div>
+      <div class="label">In progress</div>
+    </div>
+    <div class="stat issues">
+      <div class="num" id="stat-issues">0</div>
+      <div class="label">Issues found</div>
+    </div>
+    <div class="stat">
+      <div class="num" id="stat-avg">–</div>
+      <div class="label">Avg review time</div>
+    </div>
+  </div>
+
+  <div class="section-label">recent activity</div>
+
+  <div id="empty" class="empty">waiting for the next pull request<span class="cursor"></span></div>
   <div id="jobs"></div>
+</main>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const socket = io();
-    const jobsContainer = document.getElementById("jobs");
-    const jobElements = {};
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+  const jobsContainer = document.getElementById("jobs");
+  const emptyState = document.getElementById("empty");
+  const connDot = document.getElementById("conn-dot");
+  const connLabel = document.getElementById("conn-label");
 
-    socket.on("job-update", (event) => {
-      let el = jobElements[event.jobId];
+  const jobElements = {};   // jobId -> { root, nodeEl, badgeEl, metaEl, trackFillEl, startedAt }
+  const jobOrder = [];      // most-recent-first list of jobIds
 
-      if (!el) {
-        el = document.createElement("div");
-        el.className = "job";
-        jobElements[event.jobId] = el;
-        jobsContainer.prepend(el);
+  let totalJobs = 0;
+  let issuesFound = 0;
+  let completedDurations = [];
+
+  const STAGE_ORDER = ["started", "fetched", "reviewed", "completed"];
+  const STAGE_LABEL = {
+    started: "verifying",
+    fetched: "fetching diff",
+    reviewed: "reviewing",
+    completed: "posted",
+    failed: "failed",
+  };
+  const TRACK_WIDTH = {
+    started: "20%",
+    fetched: "50%",
+    reviewed: "80%",
+    completed: "100%",
+    failed: "100%",
+  };
+  const TRACK_COLOR_VAR = {
+    started: "--c-started",
+    fetched: "--c-fetched",
+    reviewed: "--c-reviewed",
+    completed: "--c-completed",
+    failed: "--c-failed",
+  };
+
+  socket.on("connect", () => {
+    connDot.classList.add("live");
+    connLabel.textContent = "connected";
+  });
+  socket.on("disconnect", () => {
+    connDot.classList.remove("live");
+    connLabel.textContent = "disconnected";
+  });
+
+  function formatDuration(ms) {
+    if (ms < 1000) return ms + "ms";
+    return (ms / 1000).toFixed(1) + "s";
+  }
+
+  function updateStats() {
+    document.getElementById("stat-total").textContent = totalJobs;
+    const active = jobOrder.filter(id => {
+      const j = jobElements[id];
+      return j && j.stage !== "completed" && j.stage !== "failed";
+    }).length;
+    document.getElementById("stat-active").textContent = active;
+    document.getElementById("stat-issues").textContent = issuesFound;
+
+    if (completedDurations.length) {
+      const avg = completedDurations.reduce((a, b) => a + b, 0) / completedDurations.length;
+      document.getElementById("stat-avg").textContent = formatDuration(avg);
+    }
+  }
+
+  function buildCard(event) {
+    const root = document.createElement("div");
+    root.className = "job";
+
+    const owner = (event.data && event.data.owner) || "repo";
+    const repo = (event.data && event.data.repo) || "";
+    const pr = event.pullNumber || (event.data && event.data.pullNumber) || "";
+
+    root.innerHTML = `
+      <div class="rail"><div class="node"></div></div>
+      <div class="card">
+        <div class="card-top">
+          <div class="repo">${owner}${repo ? "/" + repo : ""} <span class="pr-num">#${pr}</span></div>
+          <span class="badge"></span>
+        </div>
+        <div class="meta-row"></div>
+        <div class="track"><div class="track-fill"></div></div>
+      </div>
+    `;
+
+    jobsContainer.prepend(root);
+
+    return {
+      root,
+      nodeEl: root.querySelector(".node"),
+      badgeEl: root.querySelector(".badge"),
+      metaEl: root.querySelector(".meta-row"),
+      trackFillEl: root.querySelector(".track-fill"),
+      startedAt: Date.now(),
+      stage: null,
+    };
+  }
+
+  function renderMeta(metaEl, stage, data) {
+    const parts = [];
+    if (data) {
+      if (typeof data.fileCount === "number") {
+        parts.push(`<b>${data.fileCount}</b> file${data.fileCount === 1 ? "" : "s"} changed`);
       }
+      if (typeof data.issueCount === "number") {
+        parts.push(`<b class="${data.issueCount > 0 ? 'add' : ''}">${data.issueCount}</b> issue${data.issueCount === 1 ? "" : "s"} flagged`);
+      }
+    }
+    metaEl.innerHTML = parts.join("") || `<span>${STAGE_LABEL[stage] || stage}…</span>`;
+  }
 
-      const dataStr = event.data ? JSON.stringify(event.data) : "";
-      el.innerHTML = `
-        <div><strong>Job ${event.jobId}</strong></div>
-        <span class="stage ${event.stage}">${event.stage}</span>
-        <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #8b949e;">${dataStr}</div>
-      `;
-    });
+  socket.on("job-update", (event) => {
+    const jobId = event.jobId;
+    let job = jobElements[jobId];
 
-    socket.on("connect", () => console.log("Connected to dashboard server"));
-  </script>
+    if (!job) {
+      job = buildCard(event);
+      jobElements[jobId] = job;
+      jobOrder.unshift(jobId);
+      totalJobs++;
+      emptyState.style.display = "none";
+    }
+
+    job.stage = event.stage;
+
+    job.nodeEl.className = "node " + event.stage;
+    job.badgeEl.className = "badge " + event.stage;
+    job.badgeEl.textContent = STAGE_LABEL[event.stage] || event.stage;
+
+    job.trackFillEl.style.width = TRACK_WIDTH[event.stage] || "10%";
+    job.trackFillEl.style.background = `var(${TRACK_COLOR_VAR[event.stage] || "--c-started"})`;
+
+    renderMeta(job.metaEl, event.stage, event.data);
+
+    if (event.data && typeof event.data.issueCount === "number") {
+      issuesFound += event.data.issueCount;
+    }
+
+    if (event.stage === "completed" || event.stage === "failed") {
+      completedDurations.push(Date.now() - job.startedAt);
+    }
+
+    updateStats();
+  });
+
+  updateStats();
+</script>
 </body>
 </html>
