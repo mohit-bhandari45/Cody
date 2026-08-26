@@ -1,16 +1,16 @@
-CREATE TABLE pr_reviews {
-    id SERIAL PRIMARY_KEY,
+CREATE TABLE pr_reviews (
+    id SERIAL PRIMARY KEY,
     owner TEXT NOT NULL,
     repo TEXT NOT NULL,
     pr_number INT NOT NULL,
-    status TEXT NOT NULL DEFAULT "open",
+    status TEXT NOT NULL DEFAULT 'open',
     last_reviewed_sha TEXT,
     last_comment_id BIGINT,
-    last_issues JSONB DEFAULT "[]",
+    last_issues JSONB DEFAULT '[]',
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now(),
-    UNIQUE (owner, repo, pr_number)   
-}
+    UNIQUE (owner, repo, pr_number)
+);
 
 CREATE TABLE review_runs (
   id SERIAL PRIMARY KEY,
