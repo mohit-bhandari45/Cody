@@ -2,10 +2,7 @@ import { createAppAuth } from "@octokit/auth-app";
 import fs from "fs";
 import "dotenv/config";
 
-const privateKey = fs.readFileSync(
-  process.env.GITHUB_APP_PRIVATE_KEY_PATH!,
-  "utf8"
-);
+const privateKey = process.env.GITHUB_APP_PRIVATE_KEY!;
 
 const auth = createAppAuth({
   appId: process.env.GITHUB_APP_ID!,
