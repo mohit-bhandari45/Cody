@@ -59,6 +59,9 @@ export async function postPullRequestComment(
             `Failed to post comment: ${response.status} ${response.statusText} — ${errorText}`
         );
     }
+
+    const data = await response.json();
+    return data.id;
 }
 
 export async function compareCommits(

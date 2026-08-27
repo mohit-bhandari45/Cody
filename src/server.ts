@@ -6,6 +6,7 @@ import { Server } from "socket.io";
 import { createServer } from "http";
 import Redis from "ioredis";
 import path from "path";
+import { updatePrStatus } from "./db/prReviews";
 
 
 const app = express();
@@ -53,13 +54,26 @@ app.post("/webhook", async (req: Request, res: Response) => {
     }
 
     const action = req.body.action;
+    const pr = req.body.pull_request;
+    const repo = req.body.repository;
+    
+    if(action === "closed") {
+        const newStatus = pr.merged ? "merged" : "closed";
+        await updatePrStatus(repo.owner.login, repo.name, pr.number, newStatus);
+        console.log(`PR #${pr.number} marked as ${newStatus}`);
+        return;
+    }
+
+    if(action === "reopened") {
+        await updatePrStatus(repo.owner.login, repo.name, pr.number, "open");
+        console.log(`PR #${pr.number} reopened`);
+        return;
+    }
+    
     if (action != "opened" && action != "synchronize") {
         console.log(`Ignore pull_request action: ${action}`);
         return;
     }
-
-    const pr = req.body.pull_request;
-    const repo = req.body.repository;
 
     console.log(`[pull_request:${action}] ${repo.full_name} #${pr.number} — "${pr.title}"`);
 
@@ -67,7 +81,8 @@ app.post("/webhook", async (req: Request, res: Response) => {
         await reviewQueue.add("review-pr", {
             owner: repo.owner.login,
             repo: repo.name,
-            pullNumber: pr.number
+            pullNumber: pr.number,
+            headSha: pr.head.sha
         }, {
             // retry
             attempts: 3,
