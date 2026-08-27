@@ -38,7 +38,7 @@ export async function postPullRequestComment(
     repo: string,
     pullNumber: number,
     body: string
-): Promise<void> {
+): Promise<number> {
     const token = process.env.GITHUB_TOKEN;
 
     const url = `https://api.github.com/repos/${owner}/${repo}/issues/${pullNumber}/comments`;

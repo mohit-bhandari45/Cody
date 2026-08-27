@@ -1,28 +1,55 @@
-import { Job, Worker } from "bullmq";
 import "dotenv/config";
-import { fetchPullRequestFiles, postPullRequestComment } from "../github/githubapis";
-import { combineFilesIntoDiffText, formatReviewComment } from "../github/helper";
+import { Job, Worker } from "bullmq";
+import { fetchPullRequestFiles, postPullRequestComment, compareCommits } from "../github/githubapis";
+import { combineFilesIntoDiffText, formatReviewComment, formatIncrementalReviewComment } from "../github/helper";
 import { reviewDiff } from "../llm/client";
+import { compareIssues } from "../llm/compareIssues";
 import { connection } from "./connection";
 import { publishJobUpdate } from "./publisher";
+import { getPrReview, createPrReview, updatePrReview } from "../db/prReviews";
+import { insertReviewRun } from "../db/reviewRuns";
 
 interface ReviewJobData {
     owner: string;
     repo: string;
     pullNumber: number;
+    headSha: string;
 }
 
-async function processReviewJob(
-    job: Job<ReviewJobData>
-) {
-    const { owner, repo, pullNumber } = job.data;
+async function processReviewJob(job: Job<ReviewJobData>) {
+    const { owner, repo, pullNumber, headSha } = job.data;
 
     console.log(`Processing job ${job.id}: ${owner}/${repo} #${pullNumber}`);
     publishJobUpdate({ jobId: job.id!, stage: "started", data: { owner, repo, pullNumber } });
 
-    const files = await fetchPullRequestFiles(owner, repo, pullNumber);
+    const existingRow = await getPrReview(owner, repo, pullNumber);
+
+    let files;
+    let isIncremental = false;
+
+    if (existingRow && existingRow.last_reviewed_sha) {
+        const compareResult = await compareCommits(owner, repo, existingRow.last_reviewed_sha, headSha);
+
+        if (compareResult !== null) {
+            files = compareResult;
+            isIncremental = true;
+            console.log(`Incremental diff: ${existingRow.last_reviewed_sha} -> ${headSha}`);
+        } else {
+            console.log("Falling back to full diff (force-push or rebase detected).");
+            files = await fetchPullRequestFiles(owner, repo, pullNumber);
+        }
+    } else {
+        files = await fetchPullRequestFiles(owner, repo, pullNumber);
+        console.log(`First review for this PR — full diff.`);
+    }
+
     console.log(`Fetched ${files.length} changed file(s).`);
     publishJobUpdate({ jobId: job.id!, stage: "fetched", data: { fileCount: files.length } });
+
+    if (files.length === 0) {
+        console.log("No meaningful changes in this diff — skipping LLM call.");
+        return;
+    }
 
     const combinedDiff = combineFilesIntoDiffText(files);
     const review = await reviewDiff(combinedDiff);
@@ -31,14 +58,43 @@ async function processReviewJob(
     console.log("Issues found:", review.issues);
     publishJobUpdate({ jobId: job.id!, stage: "reviewed", data: { issueCount: review.issues.length } });
 
-    const commentBody = formatReviewComment(review);
-    await postPullRequestComment(owner, repo, pullNumber, commentBody);
-    publishJobUpdate({ jobId: job.id!, stage: "completed" });
+    let commentBody: string;
 
-    console.log(`Posted review comment for #${pullNumber}`);
+    if (isIncremental && existingRow) {
+        const comparison = compareIssues(existingRow.last_issues, review.issues);
+        commentBody = formatIncrementalReviewComment(review.summary, comparison);
+    } else {
+        commentBody = formatReviewComment(review);
+    }
+
+    const commentId = await postPullRequestComment(owner, repo, pullNumber, commentBody);
+    console.log(`Posted review comment for #${pullNumber} (comment ID: ${commentId})`);
+
+    let prReviewId: number;
+
+    if (existingRow) {
+        const updated = await updatePrReview(existingRow.id, headSha, commentId, review.issues);
+        prReviewId = updated.id;
+    } else {
+        const created = await createPrReview(owner, repo, pullNumber, headSha, commentId, review.issues);
+        prReviewId = (created!).id;
+    }
+
+    const runResult = await insertReviewRun(
+        prReviewId, headSha, commentId, review.summary, review.issues, files.length
+    );
+
+    if (!runResult.inserted) {
+        console.log("This exact commit was already reviewed (retry detected) — state still updated safely.");
+    }
+
+    publishJobUpdate({ jobId: job.id!, stage: "completed" });
 }
 
-const worker = new Worker<ReviewJobData>("review-queue", processReviewJob, { connection, concurrency: 2 });
+const worker = new Worker<ReviewJobData>("review-queue", processReviewJob, {
+    connection,
+    concurrency: 2,
+});
 
 worker.on("completed", (job) => {
     console.log(`Job ${job.id} completed successfully.`);
