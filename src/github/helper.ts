@@ -1,4 +1,5 @@
 import { ReviewResult } from "../llm/client";
+import { IssueComparison } from "../llm/compareIssues";
 
 const MAX_DIFF_CHARACTERS = 12000;
 const IGNORERD_FILE_PATTERNS: RegExp[] = [
@@ -37,7 +38,7 @@ export function combineFilesIntoDiffText(
     let combined = "";
     let truncated = false;
 
-    for (const file of files) {
+    for (const file of relevantFiles) {
         const block = `File: ${file.filename}\n${file.patch}\n\n`;
 
         if (combined.length + block.length > MAX_DIFF_CHARACTERS) {
@@ -68,4 +69,38 @@ export function formatReviewComment(review: ReviewResult): string {
         .join("\n");
 
     return `${header}\n\n### Issues\n${issueLines}`
+}
+
+export function formatIncrementalReviewComment(
+    summary: string,
+    comparison: IssueComparison
+): string {
+    const sections: string[] = [`## 🤖 AI Review (updated)\n\n${summary}`];
+
+    if (comparison.resolvedIssues.length > 0) {
+        sections.push(
+            `### ✅ Resolved since last review\n` +
+            comparison.resolvedIssues.map(i => `- ~~[${i.severity}] ${i.description}~~`).join("\n")
+        );
+    }
+
+    if (comparison.newIssues.length > 0) {
+        sections.push(
+            `### 🆕 New issues\n` +
+            comparison.newIssues.map(i => `- **[${i.severity}]** ${i.description}`).join("\n")
+        );
+    }
+
+    if (comparison.stillPresent.length > 0) {
+        sections.push(
+            `### ⚠️ Still present\n` +
+            comparison.stillPresent.map(i => `- **[${i.severity}]** ${i.description}`).join("\n")
+        );
+    }
+
+    if (comparison.newIssues.length === 0 && comparison.stillPresent.length === 0) {
+        sections.push(`✅ No outstanding issues.`);
+    }
+
+    return sections.join("\n\n");
 }
