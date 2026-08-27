@@ -68,6 +68,15 @@ app.post("/webhook", async (req: Request, res: Response) => {
             owner: repo.owner.login,
             repo: repo.name,
             pullNumber: pr.number
+        }, {
+            // retry
+            attempts: 3,
+            backoff: {
+                // delay * 2^(attemptsMade - 1) -> formula for exponential
+                // delay = 5 -> 5s, 10s, 20s, 40s
+                type: "exponential",
+                delay: 5000
+            }
         });
 
         console.log(`Enqueued review job for #${pr.number}`);
