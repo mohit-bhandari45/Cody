@@ -1,3 +1,5 @@
+import { getInstallationToken } from "./appAuth";
+
 interface ChangedFile {
     filename: string;
     status: string;
@@ -11,8 +13,9 @@ export async function fetchPullRequestFiles(
     owner: string,
     repo: string,
     pullNumber: number,
+    installationId: number
 ): Promise<ChangedFile[]> {
-    const token = process.env.GITHUB_TOKEN;
+    const token = await getInstallationToken(installationId);
 
     const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}/files`;
     const response = await fetch(url, {
@@ -37,9 +40,10 @@ export async function postPullRequestComment(
     owner: string,
     repo: string,
     pullNumber: number,
-    body: string
+    body: string,
+    installationId: number
 ): Promise<number> {
-    const token = process.env.GITHUB_TOKEN;
+    const token = await getInstallationToken(installationId);
 
     const url = `https://api.github.com/repos/${owner}/${repo}/issues/${pullNumber}/comments`;
     const response = await fetch(url, {
@@ -68,9 +72,10 @@ export async function compareCommits(
     owner: string,
     repo: string,
     baseSha: string,
-    headSha: string
+    headSha: string,
+    installationId: number
 ): Promise<ChangedFile[] | null> {
-    const token = process.env.GITHUB_TOKEN;
+    const token = await getInstallationToken(installationId);
     const url = `https://api.github.com/repos/${owner}/${repo}/compare/${baseSha}...${headSha}`;
 
     const response = await fetch(url, {

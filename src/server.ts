@@ -77,12 +77,14 @@ app.post("/webhook", async (req: Request, res: Response) => {
 
     console.log(`[pull_request:${action}] ${repo.full_name} #${pr.number} — "${pr.title}"`);
 
+    const installationId = req.body.installation?.id;
     try {
         await reviewQueue.add("review-pr", {
             owner: repo.owner.login,
             repo: repo.name,
             pullNumber: pr.number,
-            headSha: pr.head.sha
+            headSha: pr.head.sha,
+            installationId
         }, {
             // retry
             attempts: 3,

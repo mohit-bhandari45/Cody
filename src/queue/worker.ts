@@ -14,10 +14,11 @@ interface ReviewJobData {
     repo: string;
     pullNumber: number;
     headSha: string;
+    installationId: number
 }
 
 async function processReviewJob(job: Job<ReviewJobData>) {
-    const { owner, repo, pullNumber, headSha } = job.data;
+    const { owner, repo, pullNumber, headSha, installationId } = job.data;
 
     console.log(`Processing job ${job.id}: ${owner}/${repo} #${pullNumber}`);
     publishJobUpdate({ jobId: job.id!, stage: "started", data: { owner, repo, pullNumber } });
@@ -28,7 +29,7 @@ async function processReviewJob(job: Job<ReviewJobData>) {
     let isIncremental = false;
 
     if (existingRow && existingRow.last_reviewed_sha) {
-        const compareResult = await compareCommits(owner, repo, existingRow.last_reviewed_sha, headSha);
+        const compareResult = await compareCommits(owner, repo, existingRow.last_reviewed_sha, headSha, installationId);
 
         if (compareResult !== null) {
             files = compareResult;
@@ -36,10 +37,10 @@ async function processReviewJob(job: Job<ReviewJobData>) {
             console.log(`Incremental diff: ${existingRow.last_reviewed_sha} -> ${headSha}`);
         } else {
             console.log("Falling back to full diff (force-push or rebase detected).");
-            files = await fetchPullRequestFiles(owner, repo, pullNumber);
+            files = await fetchPullRequestFiles(owner, repo, pullNumber, installationId);
         }
     } else {
-        files = await fetchPullRequestFiles(owner, repo, pullNumber);
+        files = await fetchPullRequestFiles(owner, repo, pullNumber, installationId);
         console.log(`First review for this PR — full diff.`);
     }
 
@@ -67,7 +68,7 @@ async function processReviewJob(job: Job<ReviewJobData>) {
         commentBody = formatReviewComment(review);
     }
 
-    const commentId = await postPullRequestComment(owner, repo, pullNumber, commentBody);
+    const commentId = await postPullRequestComment(owner, repo, pullNumber, commentBody, installationId);
     console.log(`Posted review comment for #${pullNumber} (comment ID: ${commentId})`);
 
     let prReviewId: number;
