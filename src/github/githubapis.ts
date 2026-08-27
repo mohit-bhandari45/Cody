@@ -60,3 +60,30 @@ export async function postPullRequestComment(
         );
     }
 }
+
+export async function compareCommits(
+    owner: string,
+    repo: string,
+    baseSha: string,
+    headSha: string
+): Promise<ChangedFile[] | null> {
+    const token = process.env.GITHUB_TOKEN;
+    const url = `https://api.github.com/repos/${owner}/${repo}/compare/${baseSha}...${headSha}`;
+
+    const response = await fetch(url, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
+    });
+
+    if (!response.ok) {
+        console.warn(`Compare failed (${response.status}) — likely a force-push or rebase.`);
+        return null;
+
+    }
+
+    const data = await response.json();
+    return data.files ?? [];
+}
