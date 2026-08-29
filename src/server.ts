@@ -78,6 +78,21 @@ app.post("/webhook", async (req: Request, res: Response) => {
     console.log(`[pull_request:${action}] ${repo.full_name} #${pr.number} — "${pr.title}"`);
 
     const installationId = req.body.installation?.id;
+    console.log("Webhook review context:", {
+        event,
+        action,
+        repo: repo?.full_name,
+        pullNumber: pr?.number,
+        installationId,
+        hasInstallation: !!req.body.installation,
+        installation: req.body.installation,
+        sender: req.body.sender?.login,
+    });
+
+    if (!installationId) {
+        console.warn("Missing installation.id in webhook payload — GitHub App auth will fail.");
+    }
+
     try {
         await reviewQueue.add("review-pr", {
             owner: repo.owner.login,

@@ -126,7 +126,10 @@ worker.on("completed", (job) => {
 });
 
 worker.on("failed", (job, err) => {
-    console.error(`Job ${job?.id} failed:`, err.message);
+    // console.error(`Job ${job?.id} failed:`, err.message);
+    console.error(`Job ${job?.id} failed:`);
+    console.error(err);
+    console.error(err.stack);
 });
 
 console.log("Worker started, listening for review jobs...");
