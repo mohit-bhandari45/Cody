@@ -9,6 +9,7 @@ import { publishJobUpdate } from "./publisher";
 import { getPrReview, createPrReview, updatePrReview } from "../db/prReviews";
 import { insertReviewRun } from "../db/reviewRuns";
 import type { GitHubAuthMode } from "../github/appAuth";
+import { getRepoConfig } from "../github/repoConfig";
 
 interface ReviewJobData {
     owner: string;
@@ -24,6 +25,9 @@ async function processReviewJob(job: Job<ReviewJobData>) {
 
     console.log(`Processing job ${job.id}: ${owner}/${repo} #${pullNumber}`);
     publishJobUpdate({ jobId: job.id!, stage: "started", data: { owner, repo, pullNumber } });
+
+    const config = await getRepoConfig(owner, repo, installationId);
+    console.log("Using config:", config);
 
     const existingRow = await getPrReview(owner, repo, pullNumber);
 
