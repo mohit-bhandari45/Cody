@@ -10,6 +10,7 @@ import { getPrReview, createPrReview, updatePrReview } from "../db/prReviews";
 import { insertReviewRun } from "../db/reviewRuns";
 import type { GitHubAuthMode } from "../github/appAuth";
 import { getRepoConfig } from "../github/repoConfig";
+import { filterBySeverity } from "./helper";
 
 interface ReviewJobData {
     owner: string;
@@ -60,6 +61,7 @@ async function processReviewJob(job: Job<ReviewJobData>) {
 
     const combinedDiff = combineFilesIntoDiffText(files);
     const review = await reviewDiff(combinedDiff);
+    review.issues = filterBySeverity(review.issues, config.minSeverity);
 
     console.log("Review summary:", review.summary);
     console.log("Issues found:", review.issues);
