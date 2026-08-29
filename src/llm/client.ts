@@ -30,6 +30,19 @@ export async function reviewDiff(diffText: string): Promise<ReviewResult> {
         in both old and new files. Lines starting with "-" only existed in the old file and should be
         ignored for line numbering.
 
+        IMPORTANT: line numbering is independent per file and per hunk. Every time you see a new "File:"
+        label, or a new "@@" hunk header, RESET your line counter to the newStart value from that specific
+        hunk header — do not carry over a running count from a previous file or previous hunk.
+
+        To determine the correct line number in the NEW file for an issue: start counting from newStart
+        (the number after "+" in the hunk header for that specific hunk). For each line below the header,
+        if it starts with "+" or has no prefix, count it as the next line number in sequence. If it starts
+        with "-", skip it entirely (do not increment the count).
+
+        For each issue, include the exact "file" path (matching the "File:" label it appeared under) and
+        the "line" number computed per the rules above, reset for that file/hunk. If an issue is general
+        and not tied to one specific line, omit "file" and "line" entirely rather than guessing.
+
         To determine the correct line number in the NEW file for an issue: start counting from newStart
         (the number after "+" in the hunk header). For each line below the header, if it starts with "+"
         or has no prefix, count it as the next line number in sequence. If it starts with "-", skip it

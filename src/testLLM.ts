@@ -10,6 +10,16 @@ File: src/utils.js
 +function divide(a, b) {
 +  return a / b;
 +}
+
+File: src/math.js
+@@ -1,2 +1,7 @@
+ function add(a, b) {
+   return a + b;
+ }
++function getUserAge(birthYear) {
++  const currentYear = 2026;
++  return currentYear - birthYear;
++}
 `;
 
 reviewDiff(sampleDiff).then((result) => {
