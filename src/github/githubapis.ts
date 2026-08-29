@@ -95,3 +95,68 @@ export async function compareCommits(
     const data = await response.json();
     return data.files ?? [];
 }
+
+export async function postReviewComments(
+    owner: string,
+    repo: string,
+    pullNumber: string,
+    commitSha: string,
+    comments: { file: string, line: number, body: string }[],
+    installationId: number
+) {
+    const token = await getInstallationToken(installationId);
+    const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}/reviews`;
+
+    const response = await fetch(url, {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            commit_id: commitSha,
+            event: "COMMENT",
+            comments: comments.map((c) => ({
+                path: c.file,
+                line: c.line,
+                body: c.body
+            })),
+        }),
+    });
+
+    if (response.ok) {
+        return { posted: comments.length, failed: [] };
+    }
+
+    console.warn("Batch review submission failed — retrying comments individually.");
+
+    const failed: { file: string; line: number }[] = [];
+    let posted = 0;
+
+    for (const comment of comments) {
+        const singleResponse = await fetch(url, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                commit_id: commitSha,
+                event: "COMMENT",
+                comments: [{ path: comment.file, line: comment.line, body: comment.body }],
+            }),
+        });
+
+        if (singleResponse.ok) {
+            posted++;
+        } else {
+            failed.push({ file: comment.file, line: comment.line });
+        }
+    }
+
+    return { posted, failed };
+}
