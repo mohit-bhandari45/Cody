@@ -67,8 +67,12 @@ async function processReviewJob(job: Job<ReviewJobData>) {
     console.log("Issues found:", review.issues);
     publishJobUpdate({ jobId: job.id!, stage: "reviewed", data: { issueCount: review.issues.length } });
 
-    const lineableIssues = review.issues.filter((i) => i.file && typeof i.line === "number");
-    const nonLineableIssues = review.issues.filter((i) => !i.file && typeof i.line !== "number");
+    const lineableIssues = config.inlineComments
+        ? review.issues.filter((i) => i.file && typeof i.line === "number")
+        : [];
+    const nonLineableIssues = config.inlineComments
+        ? review.issues.filter((i) => !i.file || typeof i.line !== "number")
+        : review.issues;
 
     let failedInlineIssues: typeof review.issues = [];
     if (lineableIssues.length > 0) {
