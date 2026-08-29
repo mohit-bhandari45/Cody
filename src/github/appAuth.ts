@@ -1,8 +1,18 @@
 import { createAppAuth } from "@octokit/auth-app";
-import fs from "fs";
 import "dotenv/config";
 
-const privateKey = process.env.GITHUB_APP_PRIVATE_KEY!;
+export function normalizePrivateKey(value: string | undefined): string {
+  if (!value) {
+    throw new Error("GITHUB_APP_PRIVATE_KEY is not set.");
+  }
+
+  return value
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "")
+    .trim();
+}
+
+const privateKey = normalizePrivateKey(process.env.GITHUB_APP_PRIVATE_KEY);
 
 const auth = createAppAuth({
   appId: process.env.GITHUB_APP_ID!,
