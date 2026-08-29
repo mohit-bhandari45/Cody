@@ -36,6 +36,9 @@ app.get("/health", (_req: Request, res: Response) => {
 });
 
 app.post("/webhook", async (req: Request, res: Response) => {
+    console.log("Headers:", req.headers);
+    console.log("Body keys:", Object.keys(req.body || {}));
+    console.log("installation field:", req.body.installation);
     const signature = req.header("x-hub-signature-256");
     const event = req.header("x-github-event");
     const rawBody = (req as any).rawBody as Buffer;
@@ -56,20 +59,20 @@ app.post("/webhook", async (req: Request, res: Response) => {
     const action = req.body.action;
     const pr = req.body.pull_request;
     const repo = req.body.repository;
-    
-    if(action === "closed") {
+
+    if (action === "closed") {
         const newStatus = pr.merged ? "merged" : "closed";
         await updatePrStatus(repo.owner.login, repo.name, pr.number, newStatus);
         console.log(`PR #${pr.number} marked as ${newStatus}`);
         return;
     }
 
-    if(action === "reopened") {
+    if (action === "reopened") {
         await updatePrStatus(repo.owner.login, repo.name, pr.number, "open");
         console.log(`PR #${pr.number} reopened`);
         return;
     }
-    
+
     if (action != "opened" && action != "synchronize") {
         console.log(`Ignore pull_request action: ${action}`);
         return;
@@ -121,7 +124,7 @@ const subscriber = new Redis(process.env.REDIS_URL!);
 subscriber.subscribe("job-updates");
 
 subscriber.on("message", (channel, message) => {
-    if(channel === "job-updates") {
+    if (channel === "job-updates") {
         const event = JSON.parse(message);
         io.emit("job-update", event);
     }
@@ -130,11 +133,11 @@ subscriber.on("message", (channel, message) => {
 io.on("connection", (socket) => {
     console.log(`Dashboard connected: ${socket.id}`);
 
-    socket.on("disconnect", () =>{
+    socket.on("disconnect", () => {
         console.log(`Dashboard disconnected: ${socket.id}`);
     });
 })
 
 httpServer.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+    console.log(`Server listening on port ${PORT}`);
 });
