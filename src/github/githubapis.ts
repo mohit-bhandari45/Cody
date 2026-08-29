@@ -1,4 +1,4 @@
-import { getInstallationToken } from "./appAuth";
+import { getInstallationToken, getPersonalAccessToken, type GitHubAuthMode } from "./appAuth";
 
 interface ChangedFile {
     filename: string;
@@ -9,13 +9,26 @@ interface ChangedFile {
     patch?: string;
 }
 
+async function resolveToken(authMode: GitHubAuthMode, installationId?: number): Promise<string> {
+    if (authMode === "token") {
+        return getPersonalAccessToken();
+    }
+
+    if (!installationId) {
+        throw new Error("installationId is required when authMode is 'app'.");
+    }
+
+    return getInstallationToken(installationId);
+}
+
 export async function fetchPullRequestFiles(
     owner: string,
     repo: string,
     pullNumber: number,
-    installationId: number
+    authMode: GitHubAuthMode,
+    installationId?: number,
 ): Promise<ChangedFile[]> {
-    const token = await getInstallationToken(installationId);
+    const token = await resolveToken(authMode, installationId);
 
     const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}/files`;
     const response = await fetch(url, {
@@ -41,9 +54,10 @@ export async function postPullRequestComment(
     repo: string,
     pullNumber: number,
     body: string,
-    installationId: number
+    authMode: GitHubAuthMode,
+    installationId?: number,
 ): Promise<number> {
-    const token = await getInstallationToken(installationId);
+    const token = await resolveToken(authMode, installationId);
 
     const url = `https://api.github.com/repos/${owner}/${repo}/issues/${pullNumber}/comments`;
     const response = await fetch(url, {
@@ -73,9 +87,10 @@ export async function compareCommits(
     repo: string,
     baseSha: string,
     headSha: string,
-    installationId: number
+    authMode: GitHubAuthMode,
+    installationId?: number,
 ): Promise<ChangedFile[] | null> {
-    const token = await getInstallationToken(installationId);
+    const token = await resolveToken(authMode, installationId);
     const url = `https://api.github.com/repos/${owner}/${repo}/compare/${baseSha}...${headSha}`;
 
     const response = await fetch(url, {
@@ -102,9 +117,10 @@ export async function postReviewComments(
     pullNumber: number,
     commitSha: string,
     comments: { file: string, line: number, body: string }[],
-    installationId: number
+    authMode: GitHubAuthMode,
+    installationId?: number,
 ): Promise<{ posted: number; failed: { file: string; line: number }[]}> {
-    const token = await getInstallationToken(installationId);
+    const token = await resolveToken(authMode, installationId);
     const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}/reviews`;
 
     const response = await fetch(url, {

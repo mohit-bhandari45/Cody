@@ -8,17 +8,19 @@ import { connection } from "./connection";
 import { publishJobUpdate } from "./publisher";
 import { getPrReview, createPrReview, updatePrReview } from "../db/prReviews";
 import { insertReviewRun } from "../db/reviewRuns";
+import type { GitHubAuthMode } from "../github/appAuth";
 
 interface ReviewJobData {
     owner: string;
     repo: string;
     pullNumber: number;
     headSha: string;
-    installationId: number
+    installationId?: number;
+    authMode: GitHubAuthMode;
 }
 
 async function processReviewJob(job: Job<ReviewJobData>) {
-    const { owner, repo, pullNumber, headSha, installationId } = job.data;
+    const { owner, repo, pullNumber, headSha, installationId, authMode } = job.data;
 
     console.log(`Processing job ${job.id}: ${owner}/${repo} #${pullNumber}`);
     publishJobUpdate({ jobId: job.id!, stage: "started", data: { owner, repo, pullNumber } });
@@ -29,7 +31,7 @@ async function processReviewJob(job: Job<ReviewJobData>) {
     let isIncremental = false;
 
     if (existingRow && existingRow.last_reviewed_sha) {
-        const compareResult = await compareCommits(owner, repo, existingRow.last_reviewed_sha, headSha, installationId);
+        const compareResult = await compareCommits(owner, repo, existingRow.last_reviewed_sha, headSha, authMode, installationId);
 
         if (compareResult !== null) {
             files = compareResult;
@@ -37,10 +39,10 @@ async function processReviewJob(job: Job<ReviewJobData>) {
             console.log(`Incremental diff: ${existingRow.last_reviewed_sha} -> ${headSha}`);
         } else {
             console.log("Falling back to full diff (force-push or rebase detected).");
-            files = await fetchPullRequestFiles(owner, repo, pullNumber, installationId);
+            files = await fetchPullRequestFiles(owner, repo, pullNumber, authMode, installationId);
         }
     } else {
-        files = await fetchPullRequestFiles(owner, repo, pullNumber, installationId);
+        files = await fetchPullRequestFiles(owner, repo, pullNumber, authMode, installationId);
         console.log(`First review for this PR — full diff.`);
     }
 
@@ -71,7 +73,7 @@ async function processReviewJob(job: Job<ReviewJobData>) {
         }));
 
         const result = await postReviewComments(
-            owner, repo, pullNumber, headSha, inlineComments, installationId
+            owner, repo, pullNumber, headSha, inlineComments, authMode, installationId
         );
 
         console.log(`Inline comments: ${result.posted} posted, ${result.failed.length} failed.`);
@@ -92,7 +94,7 @@ async function processReviewJob(job: Job<ReviewJobData>) {
         commentBody = formatReviewComment(summaryReview);
     }
 
-    const commentId = await postPullRequestComment(owner, repo, pullNumber, commentBody, installationId);
+    const commentId = await postPullRequestComment(owner, repo, pullNumber, commentBody, authMode, installationId);
     console.log(`Posted review comment for #${pullNumber} (comment ID: ${commentId})`);
 
     let prReviewId: number;

@@ -16,6 +16,17 @@ const io = new Server(httpServer, {
 })
 const PORT = process.env.PORT || 3000;
 const WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
+const isProduction = process.env.NODE_ENV === "production";
+const authMode: "app" | "token" = isProduction ? "app" : "token";
+
+function resolveInstallationId(payload: any): number | undefined {
+    const installationId = payload?.installation?.id;
+    if (Number.isInteger(installationId) && installationId > 0) {
+        return Number(installationId);
+    }
+
+    return undefined;
+}
 
 if (!WEBHOOK_SECRET) {
     console.error("Missing GITHUB_WEBHOOK_SECRET in .env");
@@ -36,9 +47,6 @@ app.get("/health", (_req: Request, res: Response) => {
 });
 
 app.post("/webhook", async (req: Request, res: Response) => {
-    console.log("Headers:", req.headers);
-    console.log("Body keys:", Object.keys(req.body || {}));
-    console.log("installation field:", req.body.installation);
     const signature = req.header("x-hub-signature-256");
     const event = req.header("x-github-event");
     const rawBody = (req as any).rawBody as Buffer;
@@ -80,20 +88,24 @@ app.post("/webhook", async (req: Request, res: Response) => {
 
     console.log(`[pull_request:${action}] ${repo.full_name} #${pr.number} — "${pr.title}"`);
 
-    const installationId = req.body.installation?.id;
-    console.log("Webhook review context:", {
+    const installationId = resolveInstallationId(req.body);
+    const mode = isProduction ? "production" : "local";
+
+    console.log("Webhook event:", {
         event,
         action,
         repo: repo?.full_name,
         pullNumber: pr?.number,
         installationId,
+        authMode: authMode,
+        mode,
         hasInstallation: !!req.body.installation,
-        installation: req.body.installation,
         sender: req.body.sender?.login,
     });
 
-    if (!installationId) {
-        console.warn("Missing installation.id in webhook payload — GitHub App auth will fail.");
+    if (isProduction && !installationId) {
+        console.warn("Skipping production review job: no installation.id found on GitHub App webhook payload.");
+        return;
     }
 
     try {
@@ -102,7 +114,8 @@ app.post("/webhook", async (req: Request, res: Response) => {
             repo: repo.name,
             pullNumber: pr.number,
             headSha: pr.head.sha,
-            installationId
+            installationId,
+            authMode,
         }, {
             // retry
             attempts: 3,
