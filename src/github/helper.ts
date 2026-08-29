@@ -33,7 +33,7 @@ export function combineFilesIntoDiffText(
         }
 
         return true;
-    })
+    });
 
     let combined = "";
     let truncated = false;
