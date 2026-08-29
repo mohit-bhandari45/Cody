@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { Job, Worker } from "bullmq";
-import { fetchPullRequestFiles, postPullRequestComment, compareCommits } from "../github/githubapis";
+import { fetchPullRequestFiles, postPullRequestComment, compareCommits, postReviewComments } from "../github/githubapis";
 import { combineFilesIntoDiffText, formatReviewComment, formatIncrementalReviewComment } from "../github/helper";
 import { reviewDiff } from "../llm/client";
 import { compareIssues } from "../llm/compareIssues";
@@ -59,13 +59,37 @@ async function processReviewJob(job: Job<ReviewJobData>) {
     console.log("Issues found:", review.issues);
     publishJobUpdate({ jobId: job.id!, stage: "reviewed", data: { issueCount: review.issues.length } });
 
-    let commentBody: string;
+    const lineableIssues = review.issues.filter((i) => i.file && typeof i.line === "number");
+    const nonLineableIssues = review.issues.filter((i) => !i.file && typeof i.line !== "number");
 
+    let failedInlineIssues: typeof review.issues = [];
+    if (lineableIssues.length > 0) {
+        const inlineComments = lineableIssues.map((i) => ({
+            file: i.file!,
+            line: i.line!,
+            body: `**[${i.severity}]** ${i.description}`,
+        }));
+
+        const result = await postReviewComments(
+            owner, repo, pullNumber, headSha, inlineComments, installationId
+        );
+
+        console.log(`Inline comments: ${result.posted} posted, ${result.failed.length} failed.`);
+
+        failedInlineIssues = lineableIssues.filter((i) =>
+            result.failed.some((f) => f.file === i.file && f.line === i.line)
+        );
+    }
+
+    const issuesForSummary = [...nonLineableIssues, ...failedInlineIssues];
+    const summaryReview = { summary: review.summary, issues: issuesForSummary };
+
+    let commentBody: string = "";
     if (isIncremental && existingRow) {
-        const comparison = compareIssues(existingRow.last_issues, review.issues);
-        commentBody = formatIncrementalReviewComment(review.summary, comparison);
+        const comparison = compareIssues(existingRow.last_issues, summaryReview.issues);
+        commentBody = formatIncrementalReviewComment(summaryReview.summary, comparison);
     } else {
-        commentBody = formatReviewComment(review);
+        commentBody = formatReviewComment(summaryReview);
     }
 
     const commentId = await postPullRequestComment(owner, repo, pullNumber, commentBody, installationId);

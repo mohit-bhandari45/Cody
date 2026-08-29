@@ -99,11 +99,11 @@ export async function compareCommits(
 export async function postReviewComments(
     owner: string,
     repo: string,
-    pullNumber: string,
+    pullNumber: number,
     commitSha: string,
     comments: { file: string, line: number, body: string }[],
     installationId: number
-) {
+): Promise<{ posted: number; failed: { file: string; line: number }[]}> {
     const token = await getInstallationToken(installationId);
     const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}/reviews`;
 
