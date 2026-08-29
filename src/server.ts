@@ -7,7 +7,7 @@ import { createServer } from "http";
 import Redis from "ioredis";
 import path from "path";
 import { updatePrStatus } from "./db/prReviews";
-
+import { resolveInstallationId } from "./helpers/helper";
 
 const app = express();
 const httpServer = createServer(app);
@@ -18,15 +18,6 @@ const PORT = process.env.PORT || 3000;
 const WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
 const isProduction = process.env.NODE_ENV === "production";
 const authMode: "app" | "token" = isProduction ? "app" : "token";
-
-function resolveInstallationId(payload: any): number | undefined {
-    const installationId = payload?.installation?.id;
-    if (Number.isInteger(installationId) && installationId > 0) {
-        return Number(installationId);
-    }
-
-    return undefined;
-}
 
 if (!WEBHOOK_SECRET) {
     console.error("Missing GITHUB_WEBHOOK_SECRET in .env");

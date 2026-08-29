@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { normalizePrivateKey } from "./helper";
 
-import { normalizePrivateKey } from "./appAuth";
 
 test("normalizePrivateKey converts escaped newlines into real PEM newlines", () => {
   const input = "-----BEGIN RSA PRIVATE KEY-----\\nabc123\\n-----END RSA PRIVATE KEY-----";

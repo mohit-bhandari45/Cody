@@ -1,5 +1,6 @@
 import { ReviewResult } from "../llm/client";
 import { IssueComparison } from "../llm/compareIssues";
+import { getInstallationToken, getPersonalAccessToken, GitHubAuthMode } from "./appAuth";
 
 const MAX_DIFF_CHARACTERS = 12000;
 const IGNORERD_FILE_PATTERNS: RegExp[] = [
@@ -13,6 +14,35 @@ const IGNORERD_FILE_PATTERNS: RegExp[] = [
     /node_modules\//,
     /\.(png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/,
 ]
+
+/**
+ * Appauth helpers
+ */
+export function normalizePrivateKey(value: string | undefined): string {
+  if (!value) {
+    throw new Error("GITHUB_APP_PRIVATE_KEY is not set.");
+  }
+
+  return value
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "")
+    .trim();
+}
+
+/**
+ * Github apis helpers
+ */
+export async function resolveToken(authMode: GitHubAuthMode, installationId?: number): Promise<string> {
+    if (authMode === "token") {
+        return getPersonalAccessToken();
+    }
+
+    if (!installationId) {
+        throw new Error("installationId is required when authMode is 'app'.");
+    }
+
+    return getInstallationToken(installationId);
+}
 
 /**
  * Helper function to ignoring large diff files with bad patch

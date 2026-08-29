@@ -1,4 +1,5 @@
-import { getInstallationToken, getPersonalAccessToken, type GitHubAuthMode } from "./appAuth";
+import { type GitHubAuthMode } from "./appAuth";
+import { resolveToken } from "./helper";
 
 interface ChangedFile {
     filename: string;
@@ -7,18 +8,6 @@ interface ChangedFile {
     deletions: number;
     changes: number;
     patch?: string;
-}
-
-async function resolveToken(authMode: GitHubAuthMode, installationId?: number): Promise<string> {
-    if (authMode === "token") {
-        return getPersonalAccessToken();
-    }
-
-    if (!installationId) {
-        throw new Error("installationId is required when authMode is 'app'.");
-    }
-
-    return getInstallationToken(installationId);
 }
 
 export async function fetchPullRequestFiles(
