@@ -1,5 +1,5 @@
 import yaml from "js-yaml";
-import { getInstallationToken } from "./appAuth";
+import { getInstallationToken, getPersonalAccessToken } from "./appAuth";
 
 export interface RepoConfig {
     ignoreFiles: string[];
@@ -18,9 +18,13 @@ const DEFAULT_CONFIG: RepoConfig = {
 export async function getRepoConfig(
     owner: string,
     repo: string,
+    authMode: string,
     installationId: number
 ): Promise<RepoConfig> {
-    const token = getInstallationToken(installationId);
+    const token =
+        authMode === "token"
+            ? getPersonalAccessToken()
+            : await getInstallationToken(installationId!);
     const url = `https://api.github.com/repos/${owner}/${repo}/contents/.pr-bot.yml`;
 
     const response = await fetch(url, {
