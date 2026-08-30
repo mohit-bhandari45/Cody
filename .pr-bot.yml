@@ -1,0 +1,4 @@
+minSeverity: bug
+inlineComments: false
+ignoreFiles:
+  - "*.test.js"
