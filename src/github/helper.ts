@@ -51,13 +51,23 @@ function isNoiseFile(filename: string): boolean {
     return IGNORERD_FILE_PATTERNS.some((pattern) => pattern.test(filename));
 }
 
+function globToRegex(pattern: string): RegExp {
+  const escaped = pattern
+    .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+    .replace(/\*/g, ".*");
+  return new RegExp(`${escaped}$`);
+}
+
 export function combineFilesIntoDiffText(
-    files: { filename: string, patch?: string }[]
+    files: { filename: string, patch?: string }[],
+    extraIgnorePatterns: string[] = []
 ): string {
+    const extraRegexes = extraIgnorePatterns.map((pattern) => globToRegex(pattern));
+
     const relevantFiles = files.filter((f) => {
         if (!f.patch) return false;
 
-        if (isNoiseFile(f.filename)) {
+        if (isNoiseFile(f.filename) || extraRegexes.some((r) => r.test(f.filename))) {
             console.log(`Skipping noise file: ${f.filename}`);
             return false;
         }
