@@ -4,7 +4,7 @@ import { createPrReview, getPrReview, updatePrReview } from "../db/prReviews";
 import { insertReviewRun } from "../db/reviewRuns";
 import type { GitHubAuthMode } from "../github/appAuth";
 import { compareCommits, fetchPullRequestFiles, postPullRequestComment, postReviewComments } from "../github/githubapis";
-import { combineFilesIntoDiffText, formatIncrementalReviewComment, formatReviewComment } from "../github/helper";
+import { chunkFilesIntoBatches, formatReviewComment, formatIncrementalReviewComment } from "../github/helper";
 import { getRepoConfig } from "../github/repoConfig";
 import { ReviewResult, reviewWithGemini, reviewWithGroq } from "../llm/client";
 import { compareIssues } from "../llm/compareIssues";
@@ -59,19 +59,25 @@ async function processReviewJob(job: Job<ReviewJobData>) {
         return;
     }
 
-    const combinedDiff = combineFilesIntoDiffText(files);
+    const diffChunks = chunkFilesIntoBatches(files, config.maxDiffCharacters, config.ignoreFiles);
+    console.log(`Split PR into ${diffChunks.length} chunk(s) for the LLMs.`);
 
-    const [geminiReview, groqReview] = await Promise.all([
-        reviewWithGemini(combinedDiff),
-        reviewWithGroq(combinedDiff)
-    ])
+    const geminiReviews = await Promise.all(
+        diffChunks.map(chunk => reviewWithGemini(chunk))
+    );
+    const groqReviews = await Promise.all(
+        diffChunks.map(chunk => reviewWithGroq(chunk))
+    );
 
-    const geminiIssues = filterBySeverity(geminiReview.issues, config.minSeverity);
-    const groqIssues = filterBySeverity(groqReview.issues, config.minSeverity);
+    let allGeminiIssues = geminiReviews.flatMap(r => r.issues);
+    let allGroqIssues = groqReviews.flatMap(r => r.issues);
+
+    allGeminiIssues = filterBySeverity(allGeminiIssues, config.minSeverity);
+    allGroqIssues = filterBySeverity(allGroqIssues, config.minSeverity);
 
     const review: ReviewResult = {
-        summary: `**Gemini Insight:** ${geminiReview.summary}\n\n**Groq (Llama 3) Insight:** ${groqReview.summary}`,
-        issues: [...geminiIssues, ...groqIssues]
+        summary: `**Gemini Insight:** \n${geminiReviews.map(r => r.summary).join("\n")}\n\n**Groq (Llama 3) Insight:** \n${groqReviews.map(r => r.summary).join("\n")}`,
+        issues: [...allGeminiIssues, ...allGroqIssues]
     };
 
     console.log("Review summary:", review.summary);

@@ -58,10 +58,11 @@ function globToRegex(pattern: string): RegExp {
     return new RegExp(`${escaped}$`);
 }
 
-export function combineFilesIntoDiffText(
+export function chunkFilesIntoBatches(
     files: { filename: string, patch?: string }[],
+    maxChunkSize: number = 20000,
     extraIgnorePatterns: string[] = []
-): string {
+): string[] {
     const extraRegexes = extraIgnorePatterns.map((pattern) => globToRegex(pattern));
 
     const relevantFiles = files.filter((f) => {
@@ -75,26 +76,25 @@ export function combineFilesIntoDiffText(
         return true;
     });
 
-    let combined = "";
-    let truncated = false;
+    const chunks: string[] = [];
+    let currentChunk = "";
 
     for (const file of relevantFiles) {
         const block = `File: ${file.filename}\n${file.patch}\n\n`;
 
-        if (combined.length + block.length > MAX_DIFF_CHARACTERS) {
-            truncated = true;
-            break;
+        if (currentChunk.length + block.length > maxChunkSize && currentChunk.length > 0) {
+            chunks.push(currentChunk);
+            currentChunk = "";
         }
 
-        combined += block;
+        currentChunk += block;
     }
 
-    if (truncated) {
-        combined += `\n[Note: diff truncated — PR too large to review in full. ${relevantFiles.length} file(s) changed; only a subset shown above.]`;
-        console.log("Diff truncated due to size limit.");
+    if (currentChunk.length > 0) {
+        chunks.push(currentChunk);
     }
 
-    return combined;
+    return chunks;
 }
 
 export function formatReviewComment(review: ReviewResult): string {
