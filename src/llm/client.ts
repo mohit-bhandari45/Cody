@@ -1,6 +1,12 @@
 import { GoogleGenAI } from "@google/genai";
+import OpenAI from "openai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+const groq = new OpenAI({
+    apiKey: process.env.GROQ_API_KEY,
+    baseURL: "https://api.groq.com/openai/v1", // <-- This is the magic part
+});
 
 export interface ReviewResult {
     summary: string;
@@ -8,12 +14,12 @@ export interface ReviewResult {
         severity: "bug" | "style" | "suggestion",
         description: string,
         file?: string,
-        line?: number
+        line?: number,
+        provider?: "gemini" | "groq"
     }[];
 }
 
-export async function reviewDiff(diffText: string): Promise<ReviewResult> {
-    const prompt = `
+const SYSTEM_PROMPT = `
         You are a senior software engineer reviewing a pull request diff.
 
         Carefully check the diff for issues in these specific categories:
@@ -69,24 +75,37 @@ export async function reviewDiff(diffText: string): Promise<ReviewResult> {
 
         Omit "file" and "line" on an issue if you cannot confidently determine the exact line.
         If there are no issues, return an empty array for "issues".
-
-        Diff:
-        ${diffText}
     `;
 
+export async function reviewWithGemini(diffText: string): Promise<ReviewResult> {
     const response = await ai.models.generateContent({
         model: "gemini-3.6-flash",
-        contents: prompt,
+        contents: SYSTEM_PROMPT + `\nDiff:\n${diffText}`
     })
 
     const rawText = response.text ?? "{}";
     const cleaned = rawText.replace(/```json\n?|```/g, "").trim();
-
-    try {
-        return JSON.parse(cleaned) as ReviewResult;
-    } catch (err) {
-        console.error("Failed to parse LLM response as JSON:", rawText);
-        return { summary: "Failed to parse review.", issues: [] };
-    }
+    const parsed = JSON.parse(cleaned) as ReviewResult;
+    parsed.issues.forEach(i => i.provider = "gemini");
+    return parsed;
 }
 
+export async function reviewWithGroq(diffText: string): Promise<ReviewResult> {
+    const response = await groq.chat.completions.create({
+        model: "openai/gpt-oss-120b",
+        response_format: { type: "json_object" },
+        messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: `Diff:\n${diffText}` }
+        ]
+    });
+
+    const rawText = response.choices[0].message.content ?? "{}";
+    try {
+        const parsed = JSON.parse(rawText) as ReviewResult;
+        parsed.issues.forEach(i => i.provider = "groq");
+        return parsed;
+    } catch (err) {
+        return { summary: "Failed to parse Groq review.", issues: [] };
+    }
+}

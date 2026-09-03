@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { reviewDiff } from "./llm/client";
+import { reviewWithGemini, reviewWithGroq } from "./llm/client";
 
 const sampleDiff = `
 File: src/utils.js
@@ -20,9 +20,24 @@ File: src/math.js
 +  const currentYear = 2026;
 +  return currentYear - birthYear;
 +}
++const ADMIN_ID = 1;
 `;
 
-reviewDiff(sampleDiff).then((result) => {
-  console.log("Summary:", result.summary);
-  console.log("Issues:", JSON.stringify(result.issues, null, 2));
-});
+async function test() {
+  console.log("Testing Multi-Model Comparison...");
+
+  const [geminiResult, groqResult] = await Promise.all([
+    reviewWithGemini(sampleDiff),
+    reviewWithGroq(sampleDiff)
+  ]);
+
+  console.log("--- GEMINI ---");
+  console.log("Summary:", geminiResult.summary);
+  console.log("Issues:", JSON.stringify(geminiResult.issues, null, 2));
+
+  console.log("\n--- GROQ (LLAMA 3) ---");
+  console.log("Summary:", groqResult.summary);
+  console.log("Issues:", JSON.stringify(groqResult.issues, null, 2));
+}
+
+test();

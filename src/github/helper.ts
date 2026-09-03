@@ -19,14 +19,14 @@ const IGNORERD_FILE_PATTERNS: RegExp[] = [
  * Appauth helpers
  */
 export function normalizePrivateKey(value: string | undefined): string {
-  if (!value) {
-    throw new Error("GITHUB_APP_PRIVATE_KEY is not set.");
-  }
+    if (!value) {
+        throw new Error("GITHUB_APP_PRIVATE_KEY is not set.");
+    }
 
-  return value
-    .replace(/\\n/g, "\n")
-    .replace(/\\r/g, "")
-    .trim();
+    return value
+        .replace(/\\n/g, "\n")
+        .replace(/\\r/g, "")
+        .trim();
 }
 
 /**
@@ -52,10 +52,10 @@ function isNoiseFile(filename: string): boolean {
 }
 
 function globToRegex(pattern: string): RegExp {
-  const escaped = pattern
-    .replace(/[.+^${}()|[\]\\]/g, "\\$&")
-    .replace(/\*/g, ".*");
-  return new RegExp(`${escaped}$`);
+    const escaped = pattern
+        .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+        .replace(/\*/g, ".*");
+    return new RegExp(`${escaped}$`);
 }
 
 export function combineFilesIntoDiffText(
@@ -105,7 +105,10 @@ export function formatReviewComment(review: ReviewResult): string {
     }
 
     const issueLines = review.issues
-        .map((issue) => `- **[${issue.severity}]** ${issue.description}`)
+        .map((issue) => {
+            const tag = issue.provider === "groq" ? "🦙 Llama 3" : "✨ Gemini";
+            return `- **[${issue.severity}]** ${issue.description} *(${tag})*`;
+        })
         .join("\n");
 
     return `${header}\n\n### Issues\n${issueLines}`

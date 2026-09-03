@@ -1,16 +1,16 @@
-import "dotenv/config";
 import { Job, Worker } from "bullmq";
-import { fetchPullRequestFiles, postPullRequestComment, compareCommits, postReviewComments } from "../github/githubapis";
-import { combineFilesIntoDiffText, formatReviewComment, formatIncrementalReviewComment } from "../github/helper";
-import { reviewDiff } from "../llm/client";
-import { compareIssues } from "../llm/compareIssues";
-import { connection } from "./connection";
-import { publishJobUpdate } from "./publisher";
-import { getPrReview, createPrReview, updatePrReview } from "../db/prReviews";
+import "dotenv/config";
+import { createPrReview, getPrReview, updatePrReview } from "../db/prReviews";
 import { insertReviewRun } from "../db/reviewRuns";
 import type { GitHubAuthMode } from "../github/appAuth";
+import { compareCommits, fetchPullRequestFiles, postPullRequestComment, postReviewComments } from "../github/githubapis";
+import { combineFilesIntoDiffText, formatIncrementalReviewComment, formatReviewComment } from "../github/helper";
 import { getRepoConfig } from "../github/repoConfig";
+import { ReviewResult, reviewWithGemini, reviewWithGroq } from "../llm/client";
+import { compareIssues } from "../llm/compareIssues";
+import { connection } from "./connection";
 import { filterBySeverity } from "./helper";
+import { publishJobUpdate } from "./publisher";
 
 interface ReviewJobData {
     owner: string;
@@ -60,8 +60,19 @@ async function processReviewJob(job: Job<ReviewJobData>) {
     }
 
     const combinedDiff = combineFilesIntoDiffText(files);
-    const review = await reviewDiff(combinedDiff);
-    review.issues = filterBySeverity(review.issues, config.minSeverity);
+
+    const [geminiReview, groqReview] = await Promise.all([
+        reviewWithGemini(combinedDiff),
+        reviewWithGroq(combinedDiff)
+    ])
+
+    const geminiIssues = filterBySeverity(geminiReview.issues, config.minSeverity);
+    const groqIssues = filterBySeverity(groqReview.issues, config.minSeverity);
+
+    const review: ReviewResult = {
+        summary: `**Gemini Insight:** ${geminiReview.summary}\n\n**Groq (Llama 3) Insight:** ${groqReview.summary}`,
+        issues: [...geminiIssues, ...groqIssues]
+    };
 
     console.log("Review summary:", review.summary);
     console.log("Issues found:", review.issues);
