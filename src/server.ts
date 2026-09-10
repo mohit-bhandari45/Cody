@@ -26,6 +26,14 @@ if (!WEBHOOK_SECRET) {
     process.exit(1);
 }
 
+app.use((_req: Request, res: Response, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    if (_req.method === "OPTIONS") return res.sendStatus(200);
+    next();
+});
+
 app.use(
     express.json({
         verify: (req: Request, _res: Response, buf: Buffer) => {
@@ -33,7 +41,6 @@ app.use(
         },
     })
 );
-app.use(express.static(path.join(__dirname, "../public")));
 
 app.get("/health", (_req: Request, res: Response) => {
     res.status(200).json({ status: "ok" });

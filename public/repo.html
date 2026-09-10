@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Repo Owner Dashboard // pr-bot</title>
+<style>
+  :root {
+    --bg: #0a0e14;
+    --panel: #10151d;
+    --line: #1c2430;
+    --text: #c9d1d9;
+    --dim: #5b6472;
+    --mono: 'IBM Plex Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --accent: #58a6ff;
+    --c-success: #56d364;
+    --c-warning: #d29922;
+    --c-danger: #f85149;
+    --c-purple: #a371f7;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 48px 48px;
+    opacity: 0.15;
+  }
+
+  header {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.2rem 2rem;
+    border-bottom: 1px solid var(--line);
+    background: #0d1219;
+  }
+
+  .brand h1 {
+    font-family: var(--mono);
+    font-size: 1.1rem;
+    margin: 0;
+    color: #e6edf3;
+  }
+  .brand span { color: var(--dim); font-weight: normal; }
+
+  .header-links a {
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    text-decoration: none;
+    margin-left: 1.2rem;
+    transition: color 0.2s;
+  }
+  .header-links a:hover { color: var(--accent); }
+
+  main {
+    position: relative;
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+
+  /* --- Repo Selector Strip --- */
+  .repo-selector {
+    display: flex;
+    gap: 0.8rem;
+    margin-bottom: 2rem;
+    background: var(--panel);
+    padding: 1.2rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  .repo-selector label {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--dim);
+    white-space: nowrap;
+  }
+  .repo-selector input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: #e6edf3;
+    padding: 0.65rem 1rem;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .repo-selector input:focus {
+    border-color: var(--accent);
+  }
+  .btn {
+    background: var(--accent);
+    color: #0d1117;
+    font-weight: 600;
+    font-family: var(--sans);
+    border: none;
+    padding: 0.65rem 1.3rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  .btn:hover { opacity: 0.9; }
+  .btn:active { transform: scale(0.98); }
+
+  /* --- Navigation Tabs --- */
+  .tabs {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 1.8rem;
+  }
+  .tab-btn {
+    background: none;
+    border: none;
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    padding: 0.75rem 1.2rem;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab-btn.active {
+    color: #e6edf3;
+    border-bottom-color: var(--accent);
+  }
+
+  /* --- Form Cards --- */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .card h3 {
+    margin-top: 0;
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    color: #e6edf3;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .badge-req {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    background: rgba(210, 153, 34, 0.15);
+    color: var(--c-warning);
+    border: 1px solid rgba(210, 153, 34, 0.3);
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    margin-left: 0.5rem;
+  }
+
+  .form-group {
+    margin-bottom: 1.2rem;
+  }
+  .form-group:last-child { margin-bottom: 0; }
+  .form-group label {
+    display: block;
+    font-size: 0.8rem;
+    font-family: var(--mono);
+    color: var(--dim);
+    margin-bottom: 0.4rem;
+  }
+  .form-group input, .form-group select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: #e6edf3;
+    padding: 0.65rem 0.85rem;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    outline: none;
+  }
+  .form-group input:focus, .form-group select:focus {
+    border-color: var(--accent);
+  }
+
+  .key-status {
+    font-size: 0.72rem;
+    font-family: var(--mono);
+    margin-top: 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .key-status.configured { color: var(--c-success); }
+  .key-status.missing { color: var(--c-danger); }
+
+  /* --- Toast Notifications --- */
+  .toast {
+    display: none;
+    padding: 0.9rem 1.2rem;
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    margin-bottom: 1.5rem;
+    animation: fadeIn 0.3s;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+  .toast.success { background: rgba(86, 211, 100, 0.12); color: var(--c-success); border: 1px solid rgba(86, 211, 100, 0.3); }
+  .toast.error { background: rgba(248, 81, 73, 0.12); color: var(--c-danger); border: 1px solid rgba(248, 81, 73, 0.3); }
+
+  .hidden { display: none !important; }
+
+  /* --- Review History Log --- */
+  .review-item {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1.2rem;
+    margin-bottom: 1rem;
+  }
+  .review-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: #e6edf3;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .review-header .sha {
+    color: var(--accent);
+    background: rgba(88, 166, 255, 0.1);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+  }
+  .review-summary {
+    margin-top: 0.8rem;
+    font-size: 0.83rem;
+    line-height: 1.5;
+    color: var(--text);
+    white-space: pre-wrap;
+    background: var(--bg);
+    padding: 0.85rem 1rem;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>pr-bot <span>// repo owner dashboard</span></h1>
+  </div>
+  <div class="header-links">
+    <a href="/">⚡ Live Monitor</a>
+    <a href="https://github.com" target="_blank">GitHub ↗</a>
+  </div>
+</header>
+
+<main>
+  <!-- Repo Selector Bar -->
+  <div class="repo-selector">
+    <label>Repository:</label>
+    <input type="text" id="repo-name" placeholder="owner/repository (e.g. mohit-bhandari45/Cody)" />
+    <button class="btn" onclick="loadRepoData()">Load Repository</button>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <!-- Navigation Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('settings')">⚙️ Settings & Mandatory BYOK</button>
+    <button class="tab-btn" onclick="switchTab('history')">📜 Review History Logs</button>
+  </div>
+
+  <!-- TAB 1: Settings & BYOK -->
+  <div id="tab-settings" class="tab-content">
+    <form id="settings-form" onsubmit="saveRepoSettings(event)">
+      
+      <!-- BYOK Card -->
+      <div class="card">
+        <h3>🔐 Mandatory Bring Your Own Key (BYOK) <span class="badge-req">Required</span></h3>
+        <p style="font-size: 0.8rem; color: var(--dim); margin-bottom: 1.2rem; line-height: 1.4;">
+          Your repository runs AI reviews using your own API quota. At least one API key (Gemini or Groq) is required to process PR reviews.
+        </p>
+
+        <div class="form-group">
+          <label>Google Gemini API Key:</label>
+          <input type="password" id="gemini-key" placeholder="AIzaSy..." />
+          <div id="gemini-status" class="key-status missing">❌ Not configured</div>
+        </div>
+
+        <div class="form-group">
+          <label>Groq API Key (Llama 3):</label>
+          <input type="password" id="groq-key" placeholder="gsk_..." />
+          <div id="groq-status" class="key-status missing">❌ Not configured</div>
+        </div>
+      </div>
+
+      <!-- Config Card -->
+      <div class="card">
+        <h3>⚙️ Review Configuration & Rules</h3>
+
+        <div class="form-group">
+          <label>Minimum Severity Threshold:</label>
+          <select id="min-severity">
+            <option value="suggestion">Suggestion (Report all issues)</option>
+            <option value="style">Style & Bugs</option>
+            <option value="bug">Bugs Only (Strict filtering)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Inline Line Comments:</label>
+          <select id="inline-comments">
+            <option value="true">Enabled (Post comments directly on diff lines)</option>
+            <option value="false">Disabled (Post summary comment only)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Max Diff Characters Limit:</label>
+          <input type="number" id="max-diff-chars" value="12000" />
+        </div>
+
+        <div class="form-group">
+          <label>Ignored Files (comma separated patterns):</label>
+          <input type="text" id="ignore-files" placeholder="*.test.ts, docs/*, legacy/" />
+        </div>
+      </div>
+
+      <button type="submit" class="btn" style="width: 100%; padding: 0.8rem;">Save Repository Settings & API Keys</button>
+    </form>
+  </div>
+
+  <!-- TAB 2: Review History -->
+  <div id="tab-history" class="tab-content hidden">
+    <div id="reviews-list">
+      <div style="text-align: center; color: var(--dim); padding: 3rem; font-family: var(--mono); font-size: 0.85rem;">
+        Enter a repository name above and click "Load Repository" to view past PR reviews.
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  let currentOwner = "";
+  let currentRepo = "";
+
+  // Auto-restore saved repo from localStorage
+  window.addEventListener("DOMContentLoaded", () => {
+    const savedRepo = localStorage.getItem("pr_bot_last_repo");
+    if (savedRepo) {
+      document.getElementById("repo-name").value = savedRepo;
+      loadRepoData();
+    }
+  });
+
+  function parseRepoInput() {
+    const val = document.getElementById("repo-name").value.trim();
+    if (!val.includes("/")) {
+      showToast("Please enter repository in format 'owner/repo' (e.g. mohit-bhandari45/Cody)", "error");
+      return null;
+    }
+    const [owner, repo] = val.split("/");
+    return { owner: owner.trim(), repo: repo.trim() };
+  }
+
+  function switchTab(tabName) {
+    document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach(c => c.classList.add("hidden"));
+
+    if (tabName === 'settings') {
+      document.querySelectorAll(".tab-btn")[0].classList.add("active");
+      document.getElementById("tab-settings").classList.remove("hidden");
+    } else {
+      document.querySelectorAll(".tab-btn")[1].classList.add("active");
+      document.getElementById("tab-history").classList.remove("hidden");
+      if (currentOwner && currentRepo) loadReviewHistory();
+    }
+  }
+
+  function showToast(msg, type) {
+    const toast = document.getElementById("toast");
+    toast.textContent = msg;
+    toast.className = `toast ${type}`;
+    toast.style.display = "block";
+    setTimeout(() => { toast.style.display = "none"; }, 4500);
+  }
+
+  async function loadRepoData() {
+    const parsed = parseRepoInput();
+    if (!parsed) return;
+    currentOwner = parsed.owner;
+    currentRepo = parsed.repo;
+    localStorage.setItem("pr_bot_last_repo", `${currentOwner}/${currentRepo}`);
+
+    try {
+      const res = await fetch(`/api/repo/settings?owner=${currentOwner}&repo=${currentRepo}`);
+      const data = await res.json();
+
+      const geminiStatus = document.getElementById("gemini-status");
+      const groqStatus = document.getElementById("groq-status");
+
+      if (data.has_gemini_key) {
+        geminiStatus.textContent = "✅ Configured (" + data.gemini_api_key + ")";
+        geminiStatus.className = "key-status configured";
+      } else {
+        geminiStatus.textContent = "❌ Not configured";
+        geminiStatus.className = "key-status missing";
+      }
+
+      if (data.has_groq_key) {
+        groqStatus.textContent = "✅ Configured (" + data.groq_api_key + ")";
+        groqStatus.className = "key-status configured";
+      } else {
+        groqStatus.textContent = "❌ Not configured";
+        groqStatus.className = "key-status missing";
+      }
+
+      document.getElementById("min-severity").value = data.min_severity || "suggestion";
+      document.getElementById("inline-comments").value = data.inline_comments ? "true" : "false";
+      document.getElementById("max-diff-chars").value = data.max_diff_characters || 12000;
+      document.getElementById("ignore-files").value = (data.ignore_files || []).join(", ");
+
+      showToast(`Loaded settings for ${currentOwner}/${currentRepo}`, "success");
+      loadReviewHistory();
+    } catch (err) {
+      showToast("Failed to load repo settings: " + err.message, "error");
+    }
+  }
+
+  async function saveRepoSettings(e) {
+    e.preventDefault();
+    if (!currentOwner || !currentRepo) {
+      const parsed = parseRepoInput();
+      if (!parsed) return;
+      currentOwner = parsed.owner;
+      currentRepo = parsed.repo;
+    }
+
+    const geminiKey = document.getElementById("gemini-key").value.trim();
+    const groqKey = document.getElementById("groq-key").value.trim();
+    const minSeverity = document.getElementById("min-severity").value;
+    const inlineComments = document.getElementById("inline-comments").value === "true";
+    const maxDiffChars = parseInt(document.getElementById("max-diff-chars").value) || 12000;
+    const ignoreFilesStr = document.getElementById("ignore-files").value;
+    const ignoreFiles = ignoreFilesStr ? ignoreFilesStr.split(",").map(s => s.trim()).filter(Boolean) : [];
+
+    const payload = {
+      owner: currentOwner,
+      repo: currentRepo,
+      min_severity: minSeverity,
+      inline_comments: inlineComments,
+      max_diff_characters: maxDiffChars,
+      ignore_files: ignoreFiles,
+    };
+
+    if (geminiKey) payload.gemini_api_key = geminiKey;
+    if (groqKey) payload.groq_api_key = groqKey;
+
+    try {
+      const res = await fetch("/api/repo/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast("Settings saved successfully!", "success");
+        loadRepoData();
+      } else {
+        showToast("Error: " + data.error, "error");
+      }
+    } catch (err) {
+      showToast("Failed to save settings: " + err.message, "error");
+    }
+  }
+
+  async function loadReviewHistory() {
+    if (!currentOwner || !currentRepo) return;
+    const listEl = document.getElementById("reviews-list");
+    listEl.innerHTML = "<div style='color: var(--dim); font-family: var(--mono); font-size: 0.85rem;'>Loading review logs…</div>";
+
+    try {
+      const res = await fetch(`/api/repo/reviews?owner=${currentOwner}&repo=${currentRepo}`);
+      const data = await res.json();
+
+      if (!data.reviews || data.reviews.length === 0) {
+        listEl.innerHTML = "<div style='color: var(--dim); font-family: var(--mono); font-size: 0.85rem;'>No PR reviews recorded yet for this repository.</div>";
+        return;
+      }
+
+      listEl.innerHTML = data.reviews.map(r => `
+        <div class="review-item">
+          <div class="review-header">
+            <span>PR #${r.pr_number} — <span class="sha">${r.commit_sha.slice(0, 7)}</span></span>
+            <span style="color: var(--dim); font-size: 0.75rem;">${new Date(r.created_at).toLocaleString()}</span>
+          </div>
+          <div class="review-summary">${r.summary || "No summary recorded"}</div>
+        </div>
+      `).join("");
+    } catch (err) {
+      listEl.innerHTML = "<div style='color: var(--c-danger); font-family: var(--mono); font-size: 0.85rem;'>Failed to load review history logs.</div>";
+    }
+  }
+</script>
+</body>
+</html>
