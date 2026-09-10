@@ -10,6 +10,7 @@
     "client": "npm --prefix client run dev",
     "dev:all": "concurrently -n \"server,worker,client,ngrok\" -c \"cyan,yellow,blue,magenta\" \"npm run dev\" \"npm run worker\" \"npm run client\" \"ngrok http 3000 --log=stdout\"",
     "build": "tsc",
+    "start": "concurrently \"node dist/server.js\" \"node dist/queue/worker.js\"",
     "start:all": "concurrently \"node dist/server.js\" \"node dist/queue/worker.js\""
   },
   "keywords": [],
@@ -24,6 +25,7 @@
     "@types/node": "^26.2.0",
     "@types/pg": "^8.23.1",
     "bullmq": "^6.2.0",
+    "concurrently": "^10.0.5",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "ioredis": "^6.0.0",
@@ -34,7 +36,6 @@
     "typescript": "^7.0.2"
   },
   "devDependencies": {
-    "concurrently": "^10.0.5",
     "tsx": "^4.23.12"
   }
 }
