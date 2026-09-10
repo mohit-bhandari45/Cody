@@ -78,8 +78,8 @@ app.get("/api/auth/github/callback", async (req: Request, res: Response) => {
         const accessToken = tokenData.access_token;
 
         if (!accessToken) {
-            console.error("OAuth token error:", tokenData);
-            return res.redirect("http://localhost:5173/?auth_error=failed_token");
+            console.error("OAuth token exchange failed:", tokenData);
+            return res.redirect(`http://localhost:5173/?auth_error=failed_token&reason=${encodeURIComponent(tokenData.error_description || tokenData.error || "unknown")}`);
         }
 
         return res.redirect(`http://localhost:5173/?token=${accessToken}`);
