@@ -24,18 +24,23 @@ interface ReviewJobData {
 async function processReviewJob(job: Job<ReviewJobData>) {
     const { owner, repo, pullNumber, headSha, installationId, authMode } = job.data;
 
+    // publish the job update first
     console.log(`Processing job ${job.id}: ${owner}/${repo} #${pullNumber}`);
     publishJobUpdate({ jobId: job.id!, stage: "started", data: { owner, repo, pullNumber } });
 
+    // get the repo config, like the yaml file if the owner has created or not
     const config = await getRepoConfig(owner, repo, authMode, installationId!);
     console.log("Using config:", config);
 
+    // get previous review.
     const existingRow = await getPrReview(owner, repo, pullNumber);
 
     let files;
     let isIncremental = false;
 
+    // check if there are existing reviews and it has last reviewed sha
     if (existingRow && existingRow.last_reviewed_sha) {
+        // compare the commits
         const compareResult = await compareCommits(owner, repo, existingRow.last_reviewed_sha, headSha, authMode, installationId);
 
         if (compareResult !== null) {

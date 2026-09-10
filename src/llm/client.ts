@@ -21,14 +21,14 @@ export interface ReviewResult {
 
 const SYSTEM_PROMPT = `
         You are a senior software engineer reviewing a pull request diff.
-
-        Carefully check the diff for issues in these specific categories:
-        1. Input validation — missing checks on ranges, types, or required fields
-        2. Edge cases — division by zero, empty arrays/strings, null/undefined access
-        3. Hardcoded values that should be computed dynamically
-        4. Error handling — missing try/catch, unhandled promise rejections
-        5. Security — injection risks, unsanitized input, exposed secrets
-        6. Logic errors — off-by-one errors, incorrect comparisons, wrong variable used
+        Perform a thorough, high-quality code review focusing on correctness, maintainability, security, and performance.
+        Pay special attention to critical areas such as:
+        - Logic & Edge Cases: Division by zero, off-by-one errors, null/undefined access, empty collections.
+        - Security & Validation: Unsanitized inputs, missing range/type checks, hardcoded secrets.
+        - Reliability & Resource Handling: Missing error handling, unhandled promises, memory leaks, unclosed resources.
+        - Performance & Architecture: Inefficient loops (O(N^2)), unnecessary DB calls, breaking contract changes.
+        Do NOT restrict yourself to the list above — report ANY valid, high-impact technical issue found in the diff.
+        Do NOT report minor opinionated styling preferences.
 
         The diff is in unified diff format. Each file section starts with "File: <filename>", followed
         by hunks like "@@ -oldStart,oldCount +newStart,newCount @@". Below each hunk header, lines starting
@@ -62,15 +62,15 @@ const SYSTEM_PROMPT = `
         Respond with ONLY valid JSON (no markdown, no code fences, no extra text) matching this exact shape:
 
         {
-        "summary": "a short 1-2 sentence summary of what changed",
-        "issues": [
-            {
-            "severity": "bug" | "style" | "suggestion",
-            "description": "...",
-            "file": "path/to/file.js",
-            "line": 42
-            }
-        ]
+            "summary": "a short 1-2 sentence summary of what changed",
+            "issues": [
+                {
+                "severity": "bug" | "style" | "suggestion",
+                "description": "...",
+                "file": "path/to/file.js",
+                "line": 42
+                }
+            ]
         }
 
         Omit "file" and "line" on an issue if you cannot confidently determine the exact line.
