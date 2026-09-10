@@ -46,10 +46,18 @@ app.get("/health", (_req: Request, res: Response) => {
     res.status(200).json({ status: "ok" });
 });
 
+const clientUrl = isProduction
+    ? (process.env.PROD_CLIENT_URL || "")
+    : (process.env.DEV_CLIENT_URL || "http://localhost:5173");
+
+const serverUrl = isProduction
+    ? (process.env.PROD_SERVER_URL || "")
+    : `http://localhost:${PORT}`;
+
 // --- GITHUB OAUTH ROUTES ---
 app.get("/api/auth/github", (_req: Request, res: Response) => {
     const clientId = process.env.GITHUB_CLIENT_ID || "Iv23liCBquYLO35ElLLF";
-    const redirectUri = encodeURIComponent("http://localhost:3000/api/auth/github/callback");
+    const redirectUri = encodeURIComponent(`${serverUrl}/api/auth/github/callback`);
     const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=read:user,repo`;
     return res.redirect(githubAuthUrl);
 });
@@ -79,13 +87,13 @@ app.get("/api/auth/github/callback", async (req: Request, res: Response) => {
 
         if (!accessToken) {
             console.error("OAuth token exchange failed:", tokenData);
-            return res.redirect(`http://localhost:5173/?auth_error=failed_token&reason=${encodeURIComponent(tokenData.error_description || tokenData.error || "unknown")}`);
+            return res.redirect(`${clientUrl}/?auth_error=failed_token&reason=${encodeURIComponent(tokenData.error_description || tokenData.error || "unknown")}`);
         }
 
-        return res.redirect(`http://localhost:5173/?token=${accessToken}`);
+        return res.redirect(`${clientUrl}/?token=${accessToken}`);
     } catch (err: any) {
         console.error("OAuth error:", err);
-        return res.redirect("http://localhost:5173/?auth_error=server_error");
+        return res.redirect(`${clientUrl}/?auth_error=server_error`);
     }
 });
 
