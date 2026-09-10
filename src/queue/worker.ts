@@ -11,6 +11,7 @@ import { compareIssues } from "../llm/compareIssues";
 import { connection } from "./connection";
 import { filterBySeverity } from "./helper";
 import { publishJobUpdate } from "./publisher";
+import { getRepoSettings } from "../db/repoSettings";
 
 interface ReviewJobData {
     owner: string;
@@ -28,9 +29,18 @@ async function processReviewJob(job: Job<ReviewJobData>) {
     console.log(`Processing job ${job.id}: ${owner}/${repo} #${pullNumber}`);
     publishJobUpdate({ jobId: job.id!, stage: "started", data: { owner, repo, pullNumber } });
 
-    // get the repo config, like the yaml file if the owner has created or not
-    const config = await getRepoConfig(owner, repo, authMode, installationId!);
-    console.log("Using config:", config);
+    // Fetch both repo YAML config and DB Settings
+    const yamlConfig = await getRepoConfig(owner, repo, authMode, installationId!);
+    const dbSettings = await getRepoSettings(owner, repo);
+
+    // merge them both
+    const config = {
+        ...yamlConfig,
+        minSeverity: dbSettings?.min_severity || yamlConfig.minSeverity,
+        inlineComments: dbSettings?.inline_comments || yamlConfig.inlineComments,
+        maxDiffCharacters: dbSettings?.max_diff_characters || yamlConfig.maxDiffCharacters,
+        ignoreFiles: [...(yamlConfig.ignoreFiles || []), ...(dbSettings?.ignore_files || []) || []]
+    }
 
     // get previous review.
     const existingRow = await getPrReview(owner, repo, pullNumber);
@@ -68,10 +78,10 @@ async function processReviewJob(job: Job<ReviewJobData>) {
     console.log(`Split PR into ${diffChunks.length} chunk(s) for the LLMs.`);
 
     const geminiReviews = await Promise.all(
-        diffChunks.map(chunk => reviewWithGemini(chunk))
+        diffChunks.map(chunk => reviewWithGemini(chunk, dbSettings?.gemini_api_key))
     );
     const groqReviews = await Promise.all(
-        diffChunks.map(chunk => reviewWithGroq(chunk))
+        diffChunks.map(chunk => reviewWithGroq(chunk, dbSettings?.groq_api_key))
     );
 
     let allGeminiIssues = geminiReviews.flatMap(r => r.issues);
