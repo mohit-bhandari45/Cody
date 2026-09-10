@@ -17,7 +17,7 @@ const io = new Server(httpServer, {
 })
 const PORT = process.env.PORT || 3000;
 const WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
-const isProduction = process.env.NODE_ENV === "production";
+const isProduction = process.env.NODE_ENV === "production" || process.env.RENDER === "true";
 const authMode: "app" | "token" = isProduction ? "app" : "token";
 
 if (!WEBHOOK_SECRET) {

@@ -1,7 +1,7 @@
 import { Pool } from "pg";
 import "dotenv/config";
 
-const isProduction = process.env.NODE_ENV === "production";
+const isProduction = process.env.NODE_ENV === "production" || process.env.RENDER === "true";
 
 const connectionString = isProduction
     ? (process.env.DATABASE_URL_PROD || process.env.DATABASE_URL)
