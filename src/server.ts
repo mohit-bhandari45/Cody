@@ -1,15 +1,14 @@
 import "dotenv/config";
-import express, { Request, Response } from "express";
-import { reviewQueue } from "./queue/reviewQueue";
-import { verifyGithubSignature } from "./verifySignature";
-import { Server } from "socket.io";
+import express, { NextFunction, Request, Response } from "express";
 import { createServer } from "http";
 import Redis from "ioredis";
-import path from "path";
-import { updatePrStatus } from "./db/prReviews";
-import { resolveInstallationId } from "./helpers/helper";
-import { getRepoSettings, saveRepoSettings } from "./db/repoSettings";
+import { Server } from "socket.io";
 import { pool } from "./db/pool";
+import { updatePrStatus } from "./db/prReviews";
+import { getRepoSettings, saveRepoSettings } from "./db/repoSettings";
+import { resolveInstallationId } from "./helpers/helper";
+import { reviewQueue } from "./queue/reviewQueue";
+import { verifyGithubSignature } from "./verifySignature";
 
 const app = express();
 const httpServer = createServer(app);
@@ -26,7 +25,7 @@ if (!WEBHOOK_SECRET) {
     process.exit(1);
 }
 
-app.use((_req: Request, res: Response, next) => {
+app.use((_req: Request, res: Response, next: NextFunction) => {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
