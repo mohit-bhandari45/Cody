@@ -77,8 +77,9 @@ const SYSTEM_PROMPT = `
         If there are no issues, return an empty array for "issues".
     `;
 
-export async function reviewWithGemini(diffText: string): Promise<ReviewResult> {
-    const response = await ai.models.generateContent({
+export async function reviewWithGemini(diffText: string, customApiKey?: string): Promise<ReviewResult> {
+    const client = customApiKey ? new GoogleGenAI({ apiKey: customApiKey }) : ai;
+    const response = await client.models.generateContent({
         model: "gemini-3.6-flash",
         contents: SYSTEM_PROMPT + `\nDiff:\n${diffText}`
     })
@@ -90,8 +91,11 @@ export async function reviewWithGemini(diffText: string): Promise<ReviewResult> 
     return parsed;
 }
 
-export async function reviewWithGroq(diffText: string): Promise<ReviewResult> {
-    const response = await groq.chat.completions.create({
+export async function reviewWithGroq(diffText: string, customApiKey?: string): Promise<ReviewResult> {
+    const client = customApiKey
+        ? new OpenAI({ apiKey: customApiKey, baseURL: "https://api.groq.com/openai/v1" })
+        : groq;
+    const response = await client.chat.completions.create({
         model: "openai/gpt-oss-120b",
         response_format: { type: "json_object" },
         messages: [
