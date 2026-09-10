@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { RepoSelector, RepoItem } from "./components/RepoSelector";
 import { BYOKForm, RepoSettings } from "./components/BYOKForm";
 import { ReviewHistory, ReviewRun } from "./components/ReviewHistory";
+import { API_BASE_URL } from "./config";
 
 interface UserProfile {
   login: string;
@@ -49,7 +50,7 @@ export function App() {
   useEffect(() => {
     if (!authToken) return;
 
-    fetch("/api/auth/me", {
+    fetch(`${API_BASE_URL}/api/auth/me`, {
       headers: { Authorization: `Bearer ${authToken}` },
     })
       .then((res) => {
@@ -82,7 +83,7 @@ export function App() {
   };
 
   const handleSignIn = () => {
-    window.location.href = "http://localhost:3000/api/auth/github";
+    window.location.href = `${API_BASE_URL}/api/auth/github`;
   };
 
   const handleSignOut = () => {
@@ -100,7 +101,7 @@ export function App() {
     localStorage.setItem("cody_selected_repo", fullName);
 
     try {
-      const res = await fetch(`/api/repo/settings?owner=${owner}&repo=${repo}`);
+      const res = await fetch(`${API_BASE_URL}/api/repo/settings?owner=${owner}&repo=${repo}`);
       if (!res.ok) throw new Error("Failed to fetch repo settings");
       const data = await res.json();
       setSettings(data);
@@ -113,7 +114,7 @@ export function App() {
   const fetchHistory = async (owner: string, repo: string) => {
     setIsLoadingHistory(true);
     try {
-      const res = await fetch(`/api/repo/reviews?owner=${owner}&repo=${repo}`);
+      const res = await fetch(`${API_BASE_URL}/api/repo/reviews?owner=${owner}&repo=${repo}`);
       if (res.ok) {
         const data = await res.json();
         setReviews(data.reviews || []);
@@ -127,7 +128,7 @@ export function App() {
 
   const handleSaveSettings = async (payload: any) => {
     try {
-      const res = await fetch("/api/repo/settings", {
+      const res = await fetch(`${API_BASE_URL}/api/repo/settings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
