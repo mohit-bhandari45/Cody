@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx watch src/server.ts",
     "worker": "tsx watch src/queue/worker.ts",
-    "dev:all": "concurrently -n \"server,worker,ngrok\" -c \"cyan,yellow,magenta\" \"npm run dev\" \"npm run worker\" \"ngrok http 3000\"",
+    "dev:all": "concurrently -n \"server,worker,ngrok\" -c \"cyan,yellow,magenta\" \"npm run dev\" \"npm run worker\" \"ngrok http 3000 --log=stdout\"",
     "build": "tsc",
     "start:all": "concurrently \"node dist/server.js\" \"node dist/queue/worker.js\""
   },
