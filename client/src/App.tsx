@@ -25,6 +25,15 @@ export function App() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tokenFromUrl = urlParams.get("token");
+    const authError = urlParams.get("auth_error");
+    const reason = urlParams.get("reason");
+
+    if (authError) {
+      showToast(`Authentication failed: ${reason || authError}`, "error");
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setIsLoadingAuth(false);
+      return;
+    }
 
     if (tokenFromUrl) {
       localStorage.setItem("github_oauth_token", tokenFromUrl);
