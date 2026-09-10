@@ -46,6 +46,92 @@ app.get("/health", (_req: Request, res: Response) => {
     res.status(200).json({ status: "ok" });
 });
 
+// --- GITHUB OAUTH ROUTES ---
+app.get("/api/auth/github", (_req: Request, res: Response) => {
+    const clientId = process.env.GITHUB_CLIENT_ID || "Iv23liCBquYLO35ElLLF";
+    const redirectUri = encodeURIComponent("http://localhost:3000/api/auth/github/callback");
+    const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=read:user,repo`;
+    return res.redirect(githubAuthUrl);
+});
+
+app.get("/api/auth/github/callback", async (req: Request, res: Response) => {
+    const code = req.query.code as string;
+    if (!code) {
+        return res.status(400).send("No OAuth code provided.");
+    }
+
+    try {
+        const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+            },
+            body: JSON.stringify({
+                client_id: process.env.GITHUB_CLIENT_ID || "Iv23liCBquYLO35ElLLF",
+                client_secret: process.env.GITHUB_CLIENT_SECRET || "",
+                code,
+            }),
+        });
+
+        const tokenData = await tokenRes.json();
+        const accessToken = tokenData.access_token;
+
+        if (!accessToken) {
+            console.error("OAuth token error:", tokenData);
+            return res.redirect("http://localhost:5173/?auth_error=failed_token");
+        }
+
+        return res.redirect(`http://localhost:5173/?token=${accessToken}`);
+    } catch (err: any) {
+        console.error("OAuth error:", err);
+        return res.redirect("http://localhost:5173/?auth_error=server_error");
+    }
+});
+
+app.get("/api/auth/me", async (req: Request, res: Response) => {
+    const authHeader = req.header("Authorization");
+    const token = authHeader?.replace("Bearer ", "");
+
+    if (!token) {
+        return res.status(401).json({ error: "Unauthorized — missing token" });
+    }
+
+    try {
+        const userRes = await fetch("https://api.github.com/user", {
+            headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" }
+        });
+        if (!userRes.ok) return res.status(401).json({ error: "Invalid token" });
+        const user = await userRes.json();
+
+        const reposRes = await fetch("https://api.github.com/user/repos?per_page=100&sort=updated", {
+            headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" }
+        });
+        const repos = reposRes.ok ? await reposRes.json() : [];
+
+        const formattedRepos = repos.map((r: any) => ({
+            id: r.id,
+            name: r.name,
+            full_name: r.full_name,
+            owner: r.owner.login,
+            private: r.private,
+            html_url: r.html_url
+        }));
+
+        return res.json({
+            user: {
+                login: user.login,
+                name: user.name,
+                avatar_url: user.avatar_url,
+                html_url: user.html_url,
+            },
+            repos: formattedRepos
+        });
+    } catch (err: any) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 
 // get method to get settings for a Repo
 app.get("/api/repo/settings", async (req: Request, res: Response) => {
