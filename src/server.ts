@@ -47,12 +47,12 @@ app.get("/health", (_req: Request, res: Response) => {
 });
 
 const clientUrl = isProduction
-    ? (process.env.PROD_CLIENT_URL || "")
+    ? (process.env.PROD_CLIENT_URL || "https://cody-delta-ten.vercel.app")
     : (process.env.DEV_CLIENT_URL || "http://localhost:5173");
 
 const serverUrl = isProduction
-    ? (process.env.PROD_SERVER_URL || "")
-    : `http://localhost:${PORT}`;
+    ? (process.env.PROD_SERVER_URL || "https://cody-1.onrender.com")
+    : (process.env.DEV_SERVER_URL || `http://localhost:${PORT}`);
 
 // --- GITHUB OAUTH ROUTES ---
 app.get("/api/auth/github", (_req: Request, res: Response) => {
