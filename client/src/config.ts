@@ -1,3 +1,5 @@
 // Base URL for backend Express API server
-// Defaults to http://localhost:3000 in local development, or process.env.VITE_API_URL when deployed on Vercel/production
-export const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+// Automatically resolves to https://cody-1.onrender.com in production / Vercel, or http://localhost:3000 in local development
+const isProd = import.meta.env.PROD || (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1");
+
+export const API_BASE_URL = import.meta.env.VITE_API_URL || (isProd ? "https://cody-1.onrender.com" : "http://localhost:3000");
