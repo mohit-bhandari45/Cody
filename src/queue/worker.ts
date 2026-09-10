@@ -77,12 +77,23 @@ async function processReviewJob(job: Job<ReviewJobData>) {
     const diffChunks = chunkFilesIntoBatches(files, config.maxDiffCharacters, config.ignoreFiles);
     console.log(`Split PR into ${diffChunks.length} chunk(s) for the LLMs.`);
 
-    const geminiReviews = await Promise.all(
-        diffChunks.map(chunk => reviewWithGemini(chunk, dbSettings?.gemini_api_key))
-    );
-    const groqReviews = await Promise.all(
-        diffChunks.map(chunk => reviewWithGroq(chunk, dbSettings?.groq_api_key))
-    );
+    if (!dbSettings || (!dbSettings.gemini_api_key && !dbSettings.groq_api_key)) {
+        console.warn(`[BYOK Enforced] Skipping review for ${owner}/${repo} #${pullNumber}: Missing API keys.`);
+
+        await postPullRequestComment(
+            owner, repo, pullNumber,
+            "⚠️ **AI Review Skipped**: No API key configured for this repository. Please visit the bot dashboard to configure your API key.",
+            authMode, installationId
+        );
+        return;
+    }
+    const geminiReviews = dbSettings.gemini_api_key
+        ? await Promise.all(diffChunks.map(chunk => reviewWithGemini(chunk, dbSettings.gemini_api_key!)))
+        : [];
+
+    const groqReviews = dbSettings.groq_api_key
+        ? await Promise.all(diffChunks.map(chunk => reviewWithGroq(chunk, dbSettings.groq_api_key!)))
+        : [];
 
     let allGeminiIssues = geminiReviews.flatMap(r => r.issues);
     let allGroqIssues = groqReviews.flatMap(r => r.issues);
@@ -90,8 +101,16 @@ async function processReviewJob(job: Job<ReviewJobData>) {
     allGeminiIssues = filterBySeverity(allGeminiIssues, config.minSeverity);
     allGroqIssues = filterBySeverity(allGroqIssues, config.minSeverity);
 
+    const summaryParts: string[] = [];
+    if (geminiReviews.length > 0) {
+        summaryParts.push(`**Gemini Insight:** \n${geminiReviews.map(r => r.summary).join("\n")}`);
+    }
+    if (groqReviews.length > 0) {
+        summaryParts.push(`**Groq (Llama 3) Insight:** \n${groqReviews.map(r => r.summary).join("\n")}`);
+    }
+
     const review: ReviewResult = {
-        summary: `**Gemini Insight:** \n${geminiReviews.map(r => r.summary).join("\n")}\n\n**Groq (Llama 3) Insight:** \n${groqReviews.map(r => r.summary).join("\n")}`,
+        summary: summaryParts.join("\n\n"),
         issues: [...allGeminiIssues, ...allGroqIssues]
     };
 

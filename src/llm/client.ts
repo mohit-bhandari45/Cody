@@ -77,9 +77,13 @@ const SYSTEM_PROMPT = `
         If there are no issues, return an empty array for "issues".
     `;
 
-export async function reviewWithGemini(diffText: string, customApiKey?: string): Promise<ReviewResult> {
-    const client = customApiKey ? new GoogleGenAI({ apiKey: customApiKey }) : ai;
-    const response = await client.models.generateContent({
+export async function reviewWithGemini(diffText: string, apiKey: string): Promise<ReviewResult> {
+    if (!apiKey) {
+        throw new Error("Gemini API Key is required for this repository.");
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.generateContent({
         model: "gemini-3.6-flash",
         contents: SYSTEM_PROMPT + `\nDiff:\n${diffText}`
     })
@@ -91,11 +95,16 @@ export async function reviewWithGemini(diffText: string, customApiKey?: string):
     return parsed;
 }
 
-export async function reviewWithGroq(diffText: string, customApiKey?: string): Promise<ReviewResult> {
-    const client = customApiKey
-        ? new OpenAI({ apiKey: customApiKey, baseURL: "https://api.groq.com/openai/v1" })
-        : groq;
-    const response = await client.chat.completions.create({
+export async function reviewWithGroq(diffText: string, apiKey: string): Promise<ReviewResult> {
+    if (!apiKey) {
+        throw new Error("Groq API Key is required for this repository.");
+    }
+
+    const groq = new OpenAI({
+        apiKey,
+        baseURL: "https://api.groq.com/openai/v1"
+    });
+    const response = await groq.chat.completions.create({
         model: "openai/gpt-oss-120b",
         response_format: { type: "json_object" },
         messages: [

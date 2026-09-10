@@ -27,8 +27,8 @@ async function test() {
   console.log("Testing Multi-Model Comparison...");
 
   const [geminiResult, groqResult] = await Promise.all([
-    reviewWithGemini(sampleDiff),
-    reviewWithGroq(sampleDiff)
+    reviewWithGemini(sampleDiff, process.env.GEMINI_API_KEY!),
+    reviewWithGroq(sampleDiff, process.env.GROQ_API_KEY!)
   ]);
 
   console.log("--- GEMINI ---");
