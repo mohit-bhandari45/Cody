@@ -1,35 +1,53 @@
-import React, { useState } from "react";
+import React from "react";
 
-interface RepoSelectorProps {
-  onLoadRepo: (owner: string, repo: string) => void;
-  initialRepo?: string;
+export interface RepoItem {
+  id: number;
+  name: string;
+  full_name: string;
+  owner: string;
+  private: boolean;
 }
 
-export const RepoSelector: React.FC<RepoSelectorProps> = ({ onLoadRepo, initialRepo = "" }) => {
-  const [repoInput, setRepoInput] = useState(initialRepo);
+interface RepoSelectorProps {
+  repos: RepoItem[];
+  selectedRepo: string;
+  onSelectRepo: (owner: string, repo: string) => void;
+}
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const val = repoInput.trim();
-    if (!val.includes("/")) {
-      alert("Please enter repository in format 'owner/repo' (e.g. mohit-bhandari45/Cody)");
-      return;
-    }
+export const RepoSelector: React.FC<RepoSelectorProps> = ({ repos, selectedRepo, onSelectRepo }) => {
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (!val) return;
     const [owner, repo] = val.split("/");
-    onLoadRepo(owner.trim(), repo.trim());
+    onSelectRepo(owner, repo);
   };
 
   return (
-    <form className="repo-selector" onSubmit={handleSubmit}>
-      <label htmlFor="repo-input">Repository:</label>
-      <input
-        id="repo-input"
-        type="text"
-        value={repoInput}
-        onChange={(e) => setRepoInput(e.target.value)}
-        placeholder="owner/repository (e.g. mohit-bhandari45/Cody)"
-      />
-      <button type="submit" className="btn">Load Repository</button>
-    </form>
+    <div className="repo-selector">
+      <label htmlFor="repo-select">Select Repository:</label>
+      <select
+        id="repo-select"
+        value={selectedRepo}
+        onChange={handleChange}
+        style={{
+          flex: 1,
+          background: "var(--bg)",
+          border: "1px solid var(--line)",
+          color: "#e6edf3",
+          padding: "0.65rem 1rem",
+          borderRadius: "6px",
+          fontFamily: "var(--mono)",
+          fontSize: "0.9rem",
+          outline: "none",
+        }}
+      >
+        <option value="">-- Choose a repository --</option>
+        {repos.map((r) => (
+          <option key={r.id} value={r.full_name}>
+            {r.full_name} {r.private ? "🔒 (Private)" : "🌐 (Public)"}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 };

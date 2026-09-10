@@ -85,7 +85,7 @@ export const BYOKForm: React.FC<BYOKFormProps> = ({ settings, onSave }) => {
     <form onSubmit={handleSubmit}>
       <div className="card">
         <h3>
-          🔐 Mandatory Bring Your Own Key (BYOK) <span class="badge-req">Required</span>
+          🔐 Mandatory Bring Your Own Key (BYOK) <span className="badge-req">Required</span>
         </h3>
         <p style={{ fontSize: "0.8rem", color: "var(--dim)", marginBottom: "1.2rem", lineHeight: 1.4 }}>
           Your repository runs AI reviews using your own API quota. At least one API key (Gemini or Groq) is required to process PR reviews.
