@@ -1,8 +1,8 @@
-# Cody — AI PR Review Bot 🤖
+# Diffie — AI PR Review Bot 🤖
 
 An automated, AI-powered GitHub App that performs intelligent, incremental code reviews on Pull Requests. 
 
-When a developer opens or updates a PR, Cody fetches the diff, analyzes changed code using LLMs (Google Gemini, Groq, or OpenAI), and posts structured feedback — summary, potential bugs, edge cases, and inline code suggestions — directly back to GitHub.
+When a developer opens or updates a PR, Diffie fetches the diff, analyzes changed code using LLMs (Google Gemini, Groq, or OpenAI), and posts structured feedback — summary, potential bugs, edge cases, and inline code suggestions — directly back to GitHub.
 
 ---
 
@@ -31,7 +31,7 @@ When a developer opens or updates a PR, Cody fetches the diff, analyzes changed 
 ## Features
 
 - ⚡ **Instant Automated Reviews:** Triggers immediately on `pull_request.opened` or `pull_request.synchronize` (new commits).
-- 🔄 **Incremental Commit Tracking:** Uses PostgreSQL to track the last-reviewed commit SHA. When new commits are pushed to an open PR, Cody compares only what changed (`compareCommits`), highlighting **New**, **Resolved**, and **Still Present** issues.
+- 🔄 **Incremental Commit Tracking:** Uses PostgreSQL to track the last-reviewed commit SHA. When new commits are pushed to an open PR, Diffie compares only what changed (`compareCommits`), highlighting **New**, **Resolved**, and **Still Present** issues.
 - 🎯 **Inline Comments & High-Level Summary:** Posts actionable line comments directly on problematic code blocks alongside an overall summary comment.
 - 🧠 **Multi-LLM Engine Support:** Powered by Google Gemini (`gemini-3.6-flash`), OpenAI, and Groq, configurable per repository via the web dashboard.
 - 🛡️ **Secure GitHub App Authentication:** Uses short-lived, auto-rotating GitHub App installation tokens (`@octokit/auth-app`) and HMAC-SHA256 signature verification.
@@ -88,14 +88,14 @@ flowchart TD
 
 ## Incremental Reviews & Database State
 
-Cody keeps track of PR review state in PostgreSQL (`docker/postgres/init.sql`) to prevent duplicate reviews and provide intelligent progress tracking across commits:
+Diffie keeps track of PR review state in PostgreSQL (`docker/postgres/init.sql`) to prevent duplicate reviews and provide intelligent progress tracking across commits:
 
 - **`pr_reviews` Table:** Stores current PR metadata (`owner`, `repo`, `pr_number`, `last_reviewed_sha`, `last_comment_id`, `last_issues`).
 - **`review_runs` Table:** Append-only history table recording every review execution (`commit_sha`, `summary`, `issues`, `file_count`). Enforces idempotency via `UNIQUE (pr_review_id, commit_sha)` constraint.
 
 When new commits are pushed:
-1. Cody fetches the diff using GitHub's `compareCommits(lastReviewedSha, headSha)` API.
-2. If force-push or rebase makes the previous SHA unreachable, Cody safely falls back to a full PR review.
+1. Diffie fetches the diff using GitHub's `compareCommits(lastReviewedSha, headSha)` API.
+2. If force-push or rebase makes the previous SHA unreachable, Diffie safely falls back to a full PR review.
 3. Issues are compared against past runs using a severity + word-overlap heuristic to classify resolved vs. newly introduced bugs.
 
 ---
@@ -129,7 +129,7 @@ When new commits are pushed:
 ## Project Structure
 
 ```
-Cody/
+Diffie/
 ├── client/                     # Next.js web app (deployed on Vercel)
 │   ├── src/                    # UI pages, components, & dashboard
 │   └── package.json

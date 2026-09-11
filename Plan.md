@@ -1,4 +1,4 @@
-# AI PR Review Bot — Project Plan
+# Diffie (AI PR Review Bot) — Project Plan
 
 A living document tracking what's been built, how it works, and what's left. Covers the original v1 build (Parts 1–8) and the v2 feature set built on top of it.
 

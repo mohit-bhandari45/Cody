@@ -61,7 +61,7 @@ export function App() {
         setUser(data.user);
         setUserRepos(data.repos || []);
 
-        const lastSelected = localStorage.getItem("cody_selected_repo");
+        const lastSelected = localStorage.getItem("diffie_selected_repo") || localStorage.getItem("cody_selected_repo");
         if (lastSelected && data.repos.some((r: RepoItem) => r.full_name === lastSelected)) {
           const [owner, repo] = lastSelected.split("/");
           handleSelectRepo(owner, repo);
@@ -98,7 +98,7 @@ export function App() {
   const handleSelectRepo = async (owner: string, repo: string) => {
     const fullName = `${owner}/${repo}`;
     setSelectedRepoFull(fullName);
-    localStorage.setItem("cody_selected_repo", fullName);
+    localStorage.setItem("diffie_selected_repo", fullName);
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/repo/settings?owner=${owner}&repo=${repo}`);
@@ -164,7 +164,7 @@ export function App() {
         <header className="header">
           <div className="brand">
             <div className="logo-icon">🤖</div>
-            <h1>Cody</h1>
+            <h1>Diffie</h1>
             <span className="tag">AI Code Reviewer</span>
           </div>
         </header>
@@ -173,7 +173,7 @@ export function App() {
           <div className="card" style={{ maxWidth: "500px", margin: "0 auto", padding: "3rem 2.2rem" }}>
             <div style={{ fontSize: "2.8rem", marginBottom: "1rem" }}>🤖</div>
             <h2 style={{ fontFamily: "var(--sans)", fontSize: "1.6rem", fontWeight: 700, color: "#f8fafc", marginTop: 0, marginBottom: "0.5rem" }}>
-              Automate Code Reviews with Cody
+              Automate Code Reviews with Diffie
             </h2>
             <p style={{ color: "var(--dim)", fontSize: "0.92rem", lineHeight: 1.6, marginBottom: "2.2rem" }}>
               Instant automated inline PR reviews powered by Google Gemini 3.6 & Groq Llama 3. Sign in to configure your repositories.
@@ -203,13 +203,13 @@ export function App() {
     );
   }
 
-  // --- AUTHENTICATED CODY DASHBOARD ---
+  // --- AUTHENTICATED DIFFIE DASHBOARD ---
   return (
     <div>
       <header className="header">
         <div className="brand">
           <div className="logo-icon">🤖</div>
-          <h1>Cody</h1>
+          <h1>Diffie</h1>
           <span className="tag">AI Code Reviewer</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "1.2rem" }}>
