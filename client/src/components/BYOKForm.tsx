@@ -46,7 +46,7 @@ export const BYOKForm: React.FC<BYOKFormProps> = ({ settings, onSave }) => {
     }
 
     if (!geminiKey && !groqKey && !settings.has_gemini_key && !settings.has_groq_key) {
-      alert("At least one API key (Gemini or Groq) is required for mandatory BYOK.");
+      alert("At least one API key (Gemini or Groq) is required.");
       return;
     }
 
@@ -74,8 +74,8 @@ export const BYOKForm: React.FC<BYOKFormProps> = ({ settings, onSave }) => {
   if (!settings) {
     return (
       <div className="card">
-        <p style={{ color: "var(--dim)", fontFamily: "var(--mono)", fontSize: "0.85rem" }}>
-          Enter a repository above and click "Load Repository" to configure settings.
+        <p style={{ color: "var(--text-muted)", fontFamily: "var(--mono)", fontSize: "0.85rem", margin: 0 }}>
+          Select a repository above to configure API keys and review rules.
         </p>
       </div>
     );
@@ -85,10 +85,10 @@ export const BYOKForm: React.FC<BYOKFormProps> = ({ settings, onSave }) => {
     <form onSubmit={handleSubmit}>
       <div className="card">
         <h3>
-          🔐 Mandatory Bring Your Own Key (BYOK) <span className="badge-req">Required</span>
+          API Keys (Bring Your Own Key) <span className="badge-req">Required</span>
         </h3>
-        <p style={{ fontSize: "0.8rem", color: "var(--dim)", marginBottom: "1.2rem", lineHeight: 1.4 }}>
-          Your repository runs AI reviews using your own API quota. At least one API key (Gemini or Groq) is required to process PR reviews.
+        <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginBottom: "1.2rem", lineHeight: 1.5 }}>
+          Provide at least one API key (Gemini or Groq) for processing PR code reviews on your repository.
         </p>
 
         <div className="form-group">
@@ -99,8 +99,8 @@ export const BYOKForm: React.FC<BYOKFormProps> = ({ settings, onSave }) => {
             onChange={(e) => setGeminiKey(e.target.value)}
             placeholder={settings.has_gemini_key ? settings.gemini_api_key : "AIzaSy..."}
           />
-          <div className={`key-status ${settings.has_gemini_key ? "configured" : "missing"}`}>
-            {settings.has_gemini_key ? `✅ Configured (${settings.gemini_api_key})` : "❌ Not configured"}
+          <div className="key-status">
+            Status: {settings.has_gemini_key ? `Configured (${settings.gemini_api_key})` : "Not Configured"}
           </div>
         </div>
 
@@ -112,14 +112,14 @@ export const BYOKForm: React.FC<BYOKFormProps> = ({ settings, onSave }) => {
             onChange={(e) => setGroqKey(e.target.value)}
             placeholder={settings.has_groq_key ? settings.groq_api_key : "gsk_..."}
           />
-          <div className={`key-status ${settings.has_groq_key ? "configured" : "missing"}`}>
-            {settings.has_groq_key ? `✅ Configured (${settings.groq_api_key})` : "❌ Not configured"}
+          <div className="key-status">
+            Status: {settings.has_groq_key ? `Configured (${settings.groq_api_key})` : "Not Configured"}
           </div>
         </div>
       </div>
 
       <div className="card">
-        <h3>⚙️ Review Configuration & Rules</h3>
+        <h3>Review Configuration Rules</h3>
 
         <div className="form-group">
           <label>Minimum Severity Threshold:</label>
@@ -164,8 +164,8 @@ export const BYOKForm: React.FC<BYOKFormProps> = ({ settings, onSave }) => {
         </div>
       </div>
 
-      <button type="submit" className="btn" disabled={isSubmitting} style={{ width: "100%", padding: "0.8rem" }}>
-        {isSubmitting ? "Saving..." : "Save Repository Settings & API Keys"}
+      <button type="submit" className="btn" disabled={isSubmitting} style={{ width: "100%", padding: "0.85rem" }}>
+        {isSubmitting ? "Saving..." : "Save Settings & API Keys"}
       </button>
     </form>
   );

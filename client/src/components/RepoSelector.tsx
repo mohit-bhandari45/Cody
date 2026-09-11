@@ -24,30 +24,27 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({ repos, selectedRepo,
 
   return (
     <div className="repo-selector">
-      <label htmlFor="repo-select">Select Repository:</label>
+      <label htmlFor="repo-select">Repository:</label>
       <select
         id="repo-select"
         value={selectedRepo}
         onChange={handleChange}
-        style={{
-          flex: 1,
-          background: "var(--bg)",
-          border: "1px solid var(--line)",
-          color: "#e6edf3",
-          padding: "0.65rem 1rem",
-          borderRadius: "6px",
-          fontFamily: "var(--mono)",
-          fontSize: "0.9rem",
-          outline: "none",
-        }}
       >
         <option value="">-- Choose a repository --</option>
         {repos.map((r) => (
           <option key={r.id} value={r.full_name}>
-            {r.full_name} {r.private ? "🔒 (Private)" : "🌐 (Public)"}
+            {r.full_name} {r.private ? "[Private]" : "[Public]"}
           </option>
         ))}
       </select>
+      <a
+        href="https://github.com/apps/mohit-pr-review-bot/installations/new"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="btn-secondary"
+      >
+        Install Bot +
+      </a>
     </div>
   );
 };
