@@ -9,7 +9,7 @@ When a developer opens or updates a PR, Diffie fetches the diff, analyzes change
 ## Quick Links
 
 - **Web Dashboard**: [cody-delta-ten.vercel.app](https://cody-delta-ten.vercel.app/)
-- **Install GitHub App**: [Install `mohit-pr-review-bot` on your Repositories](https://github.com/apps/mohit-pr-review-bot/installations/new)
+- **Install GitHub App**: [Install `mohit-pr-review-bot` on your Repositories](https://github.com/apps/diffie-bot/installations/new)
 - **GitHub App Settings**: [App Developer Settings](https://github.com/settings/apps/mohit-pr-review-bot)
 
 ---
