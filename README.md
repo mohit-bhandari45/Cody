@@ -1,16 +1,16 @@
-# Diffie — AI PR Review Bot 🤖
+# Diffie
 
-An automated, AI-powered GitHub App that performs intelligent, incremental code reviews on Pull Requests. 
+An automated GitHub App that performs intelligent, incremental code reviews on Pull Requests.
 
 When a developer opens or updates a PR, Diffie fetches the diff, analyzes changed code using LLMs (Google Gemini, Groq, or OpenAI), and posts structured feedback — summary, potential bugs, edge cases, and inline code suggestions — directly back to GitHub.
 
 ---
 
-## 🔗 Quick Links
+## Quick Links
 
-- ⚙️ **Web Dashboard**: [cody-delta-ten.vercel.app](https://cody-delta-ten.vercel.app/)
-- 📦 **Install GitHub App**: [Install `mohit-pr-review-bot` on your Repositories](https://github.com/apps/mohit-pr-review-bot/installations/new)
-- 🛠️ **GitHub App Settings**: [App Developer Settings](https://github.com/settings/apps/mohit-pr-review-bot)
+- **Web Dashboard**: [cody-delta-ten.vercel.app](https://cody-delta-ten.vercel.app/)
+- **Install GitHub App**: [Install `mohit-pr-review-bot` on your Repositories](https://github.com/apps/mohit-pr-review-bot/installations/new)
+- **GitHub App Settings**: [App Developer Settings](https://github.com/settings/apps/mohit-pr-review-bot)
 
 ---
 
@@ -25,19 +25,20 @@ When a developer opens or updates a PR, Diffie fetches the diff, analyzes change
 - [Project Structure](#project-structure)
 - [Setup & Local Development](#setup--local-development)
 - [Deployment](#deployment)
+- [License](#license)
 
 ---
 
 ## Features
 
-- ⚡ **Instant Automated Reviews:** Triggers immediately on `pull_request.opened` or `pull_request.synchronize` (new commits).
-- 🔄 **Incremental Commit Tracking:** Uses PostgreSQL to track the last-reviewed commit SHA. When new commits are pushed to an open PR, Diffie compares only what changed (`compareCommits`), highlighting **New**, **Resolved**, and **Still Present** issues.
-- 🎯 **Inline Comments & High-Level Summary:** Posts actionable line comments directly on problematic code blocks alongside an overall summary comment.
-- 🧠 **Multi-LLM Engine Support:** Powered by Google Gemini (`gemini-3.6-flash`), OpenAI, and Groq, configurable per repository via the web dashboard.
-- 🛡️ **Secure GitHub App Authentication:** Uses short-lived, auto-rotating GitHub App installation tokens (`@octokit/auth-app`) and HMAC-SHA256 signature verification.
-- 📦 **Async Queue Architecture:** BullMQ + Upstash Redis ensures webhooks respond instantly with `200 OK`, preventing GitHub webhook timeouts while background workers handle heavy LLM analysis.
-- 🧹 **Noise Filtering & Diff Chunker:** Automatically ignores lockfiles (`package-lock.json`, `yarn.lock`), binaries, and generated files, managing character budgets to prevent LLM context limit overflow.
-- 📊 **Realtime Dashboard:** Built with Next.js, React, and Socket.IO to monitor live job pipelines, worker execution stages, and review history.
+- **Instant Automated Reviews:** Triggers immediately on `pull_request.opened` or `pull_request.synchronize` (new commits).
+- **Incremental Commit Tracking:** Uses PostgreSQL to track the last-reviewed commit SHA. When new commits are pushed to an open PR, Diffie compares only what changed (`compareCommits`), highlighting **New**, **Resolved**, and **Still Present** issues.
+- **Inline Comments & High-Level Summary:** Posts actionable line comments directly on problematic code blocks alongside an overall summary comment.
+- **Multi-LLM Engine Support:** Powered by Google Gemini (`gemini-3.6-flash`), OpenAI, and Groq, configurable per repository via the web dashboard.
+- **Secure GitHub App Authentication:** Uses short-lived, auto-rotating GitHub App installation tokens (`@octokit/auth-app`) and HMAC-SHA256 signature verification.
+- **Async Queue Architecture:** BullMQ + Upstash Redis ensures webhooks respond instantly with `200 OK`, preventing GitHub webhook timeouts while background workers handle heavy LLM analysis.
+- **Noise Filtering & Diff Chunker:** Automatically ignores lockfiles (`package-lock.json`, `yarn.lock`), binaries, and generated files, managing character budgets to prevent LLM context limit overflow.
+- **Realtime Dashboard:** Built with Next.js, React, and Socket.IO to monitor live job pipelines, worker execution stages, and review history.
 
 ---
 
