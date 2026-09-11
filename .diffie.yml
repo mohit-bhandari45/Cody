@@ -1,4 +1,5 @@
 minSeverity: bug
-inlineComments: false
+inlineComments: true
 ignoreFiles:
   - "*.test.js"
+  - "dist/*"

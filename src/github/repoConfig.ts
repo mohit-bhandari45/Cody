@@ -6,6 +6,7 @@ export interface RepoConfig {
     minSeverity: "bug" | "style" | "suggestion";
     inlineComments: boolean;
     maxDiffCharacters: number;
+    customPrompt?: string;
 }
 
 const DEFAULT_CONFIG: RepoConfig = {
@@ -25,28 +26,30 @@ export async function getRepoConfig(
         authMode === "token"
             ? getPersonalAccessToken()
             : await getInstallationToken(installationId!);
-    const url = `https://api.github.com/repos/${owner}/${repo}/contents/.pr-bot.yml`;
 
-    const response = await fetch(url, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
+    const filesToTry = [".diffie.yml", ".diffie.yaml", ".pr-bot.yml"];
+
+    for (const fileName of filesToTry) {
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${fileName}`;
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: "application/vnd.github+json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                },
+            });
+
+            if (!response.ok) continue;
+
+            const data = await response.json();
+            const decoded = Buffer.from(data.content, "base64").toString("utf-8");
+            const parsed = yaml.load(decoded) as Partial<RepoConfig>;
+            return { ...DEFAULT_CONFIG, ...parsed };
+        } catch (error) {
+            console.warn(`Failed to parse ${fileName} for ${owner}/${repo} — trying fallback.`);
         }
-    });
-
-    if (!response.ok) {
-        return DEFAULT_CONFIG;
     }
 
-    const data = await response.json();
-    const decoded = Buffer.from(data.content, "base64").toString("utf-8");
-
-    try {
-        const parsed = yaml.load(decoded) as Partial<RepoConfig>;
-        return { ...DEFAULT_CONFIG, ...parsed };
-    } catch (error) {
-        console.warn(`Failed to parse .pr-bot.yml for ${owner}/${repo} — using defaults.`);
-        return DEFAULT_CONFIG;
-    }
+    return DEFAULT_CONFIG;
 }
