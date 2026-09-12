@@ -26,16 +26,26 @@ export async function handleSlashCommand(ctx: CommandContext) {
 
     // 1. React with 👀 emoji on the user's comment to acknowledge receipt
     try {
-        await fetch(`https://api.github.com/repos/${owner}/${repo}/issues/comments/${commentId}/reactions`, {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${token}`,
-                Accept: "application/vnd.github+json",
-                "X-GitHub-Api-Version": "2022-11-28",
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ content: "eyes" }),
-        });
+        const reactionRes = await fetch(
+            `https://api.github.com/repos/${owner}/${repo}/issues/comments/${commentId}/reactions`,
+            {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: "application/vnd.github.squirrel-girl-preview+json, application/vnd.github+json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ content: "eyes" }),
+            }
+        );
+
+        if (!reactionRes.ok) {
+            const errBody = await reactionRes.text();
+            console.warn(`Failed to add emoji reaction (${reactionRes.status}): ${errBody}`);
+        } else {
+            console.log(`Added 👀 reaction to comment #${commentId}`);
+        }
     } catch (err) {
         console.warn("Failed to add emoji reaction:", err);
     }
@@ -43,7 +53,6 @@ export async function handleSlashCommand(ctx: CommandContext) {
     // 2. Execute command action
     switch (command.type) {
         case "review": {
-            // Fetch the latest PR head SHA via GitHub API
             const prRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -60,7 +69,6 @@ export async function handleSlashCommand(ctx: CommandContext) {
             const prData = await prRes.json();
             const headSha = prData.head.sha;
 
-            // Enqueue review job in BullMQ queue
             await reviewQueue.add(
                 "review-pr",
                 {
