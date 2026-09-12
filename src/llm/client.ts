@@ -5,7 +5,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const groq = new OpenAI({
     apiKey: process.env.GROQ_API_KEY,
-    baseURL: "https://api.groq.com/openai/v1", // <-- This is the magic part
+    baseURL: "https://api.groq.com/openai/v1",
 });
 
 export interface ReviewResult {
@@ -86,7 +86,7 @@ export async function reviewWithGemini(diffText: string, apiKey: string): Promis
     const response = await ai.models.generateContent({
         model: "gemini-3.6-flash",
         contents: SYSTEM_PROMPT + `\nDiff:\n${diffText}`
-    })
+    });
 
     const rawText = response.text ?? "{}";
     const cleaned = rawText.replace(/```json\n?|```/g, "").trim();
@@ -100,11 +100,11 @@ export async function reviewWithGroq(diffText: string, apiKey: string): Promise<
         throw new Error("Groq API Key is required for this repository.");
     }
 
-    const groq = new OpenAI({
+    const groqClient = new OpenAI({
         apiKey,
         baseURL: "https://api.groq.com/openai/v1"
     });
-    const response = await groq.chat.completions.create({
+    const response = await groqClient.chat.completions.create({
         model: "openai/gpt-oss-120b",
         response_format: { type: "json_object" },
         messages: [
@@ -139,33 +139,31 @@ Provide a clear, detailed, beginner-friendly explanation covering:
 
 Keep the response concise and formatted in GitHub markdown. Do not use any emoji icons.`;
 
-    if (provider === "groq") {
-        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${apiKey}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
+    console.log(`Generating AI explanation for topic: "${topic}" using ${provider}`);
+
+    try {
+        if (provider === "groq") {
+            const groqClient = new OpenAI({
+                apiKey,
+                baseURL: "https://api.groq.com/openai/v1",
+            });
+            const response = await groqClient.chat.completions.create({
                 model: "llama-3.1-70b-versatile",
                 messages: [{ role: "user", content: prompt }],
-            }),
-        });
-        const data = await res.json();
-        return data.choices[0]?.message?.content || "Could not generate explanation.";
-    }
-
-    // Default: Gemini API
-    const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-        {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-            }),
+            });
+            return response.choices[0]?.message?.content || "Could not generate explanation.";
         }
-    );
-    const data = await res.json();
-    return data.candidates[0]?.content?.parts[0]?.text || "Could not generate explanation.";
+
+        // Gemini API using GoogleGenAI SDK
+        const geminiAi = new GoogleGenAI({ apiKey });
+        const response = await geminiAi.models.generateContent({
+            model: "gemini-3.6-flash",
+            contents: prompt,
+        });
+
+        return response.text || "Could not generate explanation.";
+    } catch (err: any) {
+        console.error(`AI explanation error (${provider}):`, err);
+        return `Failed to generate AI explanation: ${err.message || err}`;
+    }
 }
