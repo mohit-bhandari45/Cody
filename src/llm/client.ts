@@ -105,7 +105,7 @@ export async function reviewWithGroq(diffText: string, apiKey: string): Promise<
         baseURL: "https://api.groq.com/openai/v1"
     });
     const response = await groqClient.chat.completions.create({
-        model: "openai/gpt-oss-120b",
+        model: "llama-3.3-70b-versatile",
         response_format: { type: "json_object" },
         messages: [
             { role: "system", content: SYSTEM_PROMPT },
@@ -158,13 +158,13 @@ Keep the response concise and formatted in GitHub markdown. Do not use any emoji
     // 2. Fallback to Groq if key available
     if (groqKey) {
         try {
-            console.log(`Generating AI explanation for topic: "${topic}" using Groq (Llama 3)`);
+            console.log(`Generating AI explanation for topic: "${topic}" using Groq (Llama 3.3 70B)`);
             const groqClient = new OpenAI({
                 apiKey: groqKey,
                 baseURL: "https://api.groq.com/openai/v1",
             });
             const response = await groqClient.chat.completions.create({
-                model: "llama-3.1-70b-versatile",
+                model: "llama-3.3-70b-versatile",
                 messages: [{ role: "user", content: prompt }],
             });
 
