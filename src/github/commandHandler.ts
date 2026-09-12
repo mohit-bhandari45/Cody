@@ -18,18 +18,38 @@ export interface CommandContext {
     userLogin: string;
     installationId: number;
     authMode: GitHubAuthMode;
+    isInline?: boolean;
+    filePath?: string;
+    line?: number;
+    diffHunk?: string;
 }
 
 export async function handleSlashCommand(ctx: CommandContext) {
-    const { command, owner, repo, pullNumber, installationId, authMode, commentId } = ctx;
+    const {
+        command,
+        owner,
+        repo,
+        pullNumber,
+        installationId,
+        authMode,
+        commentId,
+        isInline,
+        filePath,
+        line,
+        diffHunk,
+    } = ctx;
     if (!command) return;
 
     const token = await resolveToken(authMode, installationId);
 
-    // 1. React with 👀 emoji on the user's comment to acknowledge receipt
+    // reacting with eyes.
     try {
+        const reactionUrl = isInline
+            ? `https://api.github.com/repos/${owner}/${repo}/pulls/comments/${commentId}/reactions`
+            : `https://api.github.com/repos/${owner}/${repo}/issues/comments/${commentId}/reactions`;
+
         const reactionRes = await fetch(
-            `https://api.github.com/repos/${owner}/${repo}/issues/comments/${commentId}/reactions`,
+            reactionUrl,
             {
                 method: "POST",
                 headers: {
@@ -52,7 +72,28 @@ export async function handleSlashCommand(ctx: CommandContext) {
         console.warn("Failed to add emoji reaction:", err);
     }
 
-    // 2. Execute command action
+    const sendResponse = async (message: string) => {
+        if (isInline) {
+            const replyUrl = `https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}/comments/${commentId}/replies`;
+            const replyRes = await fetch(replyUrl, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: "application/vnd.github+json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ body: message }),
+            });
+            if (!replyRes.ok) {
+                console.warn(`Failed to post inline reply (${replyRes.status}) — falling back to issue comment.`);
+                await postPullRequestComment(owner, repo, pullNumber, message, authMode, installationId);
+            }
+        } else {
+            await postPullRequestComment(owner, repo, pullNumber, message, authMode, installationId);
+        }
+    };
+
     switch (command.type) {
         case "review": {
             const prRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}`, {

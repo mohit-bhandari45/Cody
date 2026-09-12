@@ -60,6 +60,42 @@ webhookRouter.post("/", async (req: Request, res: Response) => {
         return;
     }
 
+        // Handle inline code diff comments (Files Changed tab)
+    if (event === "pull_request_review_comment") {
+        const action = req.body.action;
+        const pullRequest = req.body.pull_request;
+        const comment = req.body.comment;
+        const repo = req.body.repository;
+
+        if (action !== "created" || comment.user?.type === "Bot") {
+            return;
+        }
+
+        const command = parseSlashCommand(comment.body);
+        if (!command) return;
+
+        console.log(`[inline_slash_command:${command.type}] PR #${pullRequest.number} ${comment.path}:${comment.line || comment.original_line}`);
+        const installationId = resolveInstallationId(req.body);
+
+        await handleSlashCommand({
+            command,
+            owner: repo.owner.login,
+            repo: repo.name,
+            pullNumber: pullRequest.number,
+            commentId: comment.id,
+            commentBody: comment.body,
+            userLogin: comment.user.login,
+            installationId: installationId || 0,
+            authMode,
+            isInline: true,
+            filePath: comment.path,
+            line: comment.line || comment.original_line,
+            diffHunk: comment.diff_hunk,
+        });
+
+        return;
+    }
+
     if (event !== "pull_request") {
         console.log(`Ignore event: ${event}`);
         return;
