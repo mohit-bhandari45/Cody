@@ -106,23 +106,22 @@ export async function handleSlashCommand(ctx: CommandContext) {
             const topic = command.targetText || "the review feedback and code quality best practices";
 
             const dbSettings = await getRepoSettings(owner, repo);
-            const apiKey = dbSettings?.gemini_api_key || dbSettings?.groq_api_key || process.env.GEMINI_API_KEY || process.env.GROQ_API_KEY;
+            const geminiKey = dbSettings?.gemini_api_key || process.env.GEMINI_API_KEY;
+            const groqKey = dbSettings?.groq_api_key || process.env.GROQ_API_KEY;
 
-            if (!apiKey) {
+            if (!geminiKey && !groqKey) {
                 await postPullRequestComment(
                     owner,
                     repo,
                     pullNumber,
-                    "No API key configured for this repository. Please configure a key in the Diffie dashboard.",
+                    "No API key configured for this repository. Please configure a Gemini or Groq key in the Diffie dashboard.",
                     authMode,
                     installationId
                 );
                 break;
             }
 
-            const provider = dbSettings?.gemini_api_key ? "gemini" : "groq";
-
-            const explanation = await explainConcept(topic, apiKey, provider);
+            const explanation = await explainConcept(topic, geminiKey, groqKey);
             const explanationMessage = `### Explanation: ${topic}\n\n${explanation}`;
             await postPullRequestComment(owner, repo, pullNumber, explanationMessage, authMode, installationId);
             break;

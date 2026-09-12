@@ -125,8 +125,8 @@ export async function reviewWithGroq(diffText: string, apiKey: string): Promise<
 
 export async function explainConcept(
     topic: string,
-    apiKey: string,
-    provider: "gemini" | "groq" = "gemini"
+    geminiKey?: string,
+    groqKey?: string
 ): Promise<string> {
     const prompt = `You are a senior software engineer. A developer asked for an explanation on the following topic or code issue:
 
@@ -139,31 +139,42 @@ Provide a clear, detailed, beginner-friendly explanation covering:
 
 Keep the response concise and formatted in GitHub markdown. Do not use any emoji icons.`;
 
-    console.log(`Generating AI explanation for topic: "${topic}" using ${provider}`);
+    // 1. Try Gemini first if key available
+    if (geminiKey) {
+        try {
+            console.log(`Generating AI explanation for topic: "${topic}" using Gemini`);
+            const geminiAi = new GoogleGenAI({ apiKey: geminiKey });
+            const response = await geminiAi.models.generateContent({
+                model: "gemini-3.6-flash",
+                contents: prompt,
+            });
 
-    try {
-        if (provider === "groq") {
+            if (response.text) return response.text;
+        } catch (geminiErr: any) {
+            console.warn(`Gemini explanation failed (${geminiErr.status || geminiErr.message}). Falling back to Groq if available...`);
+        }
+    }
+
+    // 2. Fallback to Groq if key available
+    if (groqKey) {
+        try {
+            console.log(`Generating AI explanation for topic: "${topic}" using Groq (Llama 3)`);
             const groqClient = new OpenAI({
-                apiKey,
+                apiKey: groqKey,
                 baseURL: "https://api.groq.com/openai/v1",
             });
             const response = await groqClient.chat.completions.create({
                 model: "llama-3.1-70b-versatile",
                 messages: [{ role: "user", content: prompt }],
             });
-            return response.choices[0]?.message?.content || "Could not generate explanation.";
+
+            const content = response.choices[0]?.message?.content;
+            if (content) return content;
+        } catch (groqErr: any) {
+            console.warn(`Groq explanation failed:`, groqErr);
         }
-
-        // Gemini API using GoogleGenAI SDK
-        const geminiAi = new GoogleGenAI({ apiKey });
-        const response = await geminiAi.models.generateContent({
-            model: "gemini-3.6-flash",
-            contents: prompt,
-        });
-
-        return response.text || "Could not generate explanation.";
-    } catch (err: any) {
-        console.error(`AI explanation error (${provider}):`, err);
-        return `Failed to generate AI explanation: ${err.message || err}`;
     }
+
+    // 3. User-friendly error message if all providers fail
+    return `The AI service is currently experiencing high demand or temporary rate limits. Please try again in a few moments.`;
 }
