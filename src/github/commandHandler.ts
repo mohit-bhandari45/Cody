@@ -1,6 +1,10 @@
-import { reviewQueue } from "../queue/reviewQueue";
-import { getInstallationToken, getPersonalAccessToken } from "./appAuth";
+// src/github/commandHandler.ts
+
 import { DiffieCommand } from "./commandParser";
+import { reviewQueue } from "../queue/reviewQueue";
+import { resolveToken } from "./helper";
+import { postPullRequestComment } from "./githubapis";
+import { GitHubAuthMode } from "./appAuth";
 
 export interface CommandContext {
     command: DiffieCommand;
@@ -11,39 +15,52 @@ export interface CommandContext {
     commentBody: string;
     userLogin: string;
     installationId: number;
-    authMode: "app" | "token";
-}
-
-async function getOctokitClient(authMode: "app" | "token", installationId: number): Promise<Octokit> {
-    const token =
-        authMode === "token"
-            ? getPersonalAccessToken()
-            : await getInstallationToken(installationId);
-    return new Octokit({ auth: token });
+    authMode: GitHubAuthMode;
 }
 
 export async function handleSlashCommand(ctx: CommandContext) {
     const { command, owner, repo, pullNumber, installationId, authMode, commentId } = ctx;
     if (!command) return;
 
-    const octokit = await getOctokitClient(authMode, installationId);
+    const token = await resolveToken(authMode, installationId);
 
-    //  reacting with eyes emojis
+    // 1. React with 👀 emoji on the user's comment to acknowledge receipt
     try {
-        await octokit.rest.reactions.creteForIssue({
-            owner, repo, commentId: commentId, content: "eyes",
-        })
-    } catch (error) {
-        console.warn("Failed to add emoji reaction:", error);
+        await fetch(`https://api.github.com/repos/${owner}/${repo}/issues/comments/${commentId}/reactions`, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ content: "eyes" }),
+        });
+    } catch (err) {
+        console.warn("Failed to add emoji reaction:", err);
     }
 
+    // 2. Execute command action
     switch (command.type) {
-        case "review":
-            const prRes = await octokit.rest.pulls.get({
-                owner, repo, pull_number: pullNumber
-            })
-            const headSha = prRes.data.head.sha;
+        case "review": {
+            // Fetch the latest PR head SHA via GitHub API
+            const prRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: "application/vnd.github+json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                },
+            });
 
+            if (!prRes.ok) {
+                console.error(`Failed to fetch PR #${pullNumber}: ${prRes.statusText}`);
+                return;
+            }
+
+            const prData = await prRes.json();
+            const headSha = prData.head.sha;
+
+            // Enqueue review job in BullMQ queue
             await reviewQueue.add(
                 "review-pr",
                 {
@@ -59,29 +76,24 @@ export async function handleSlashCommand(ctx: CommandContext) {
                     backoff: { type: "exponential", delay: 5000 },
                 }
             );
+
             console.log(`[Command] Re-review enqueued for ${owner}/${repo} #${pullNumber}`);
             break;
+        }
 
         case "help": {
             const helpMessage = `### 🤖 Diffie Commands Reference
+
 - **\`@diffie review\`** — Trigger an immediate AI code review on this PR.
 - **\`@diffie help\`** — Show this menu.`;
-            await octokit.rest.issues.createComment({
-                owner,
-                repo,
-                issue_number: pullNumber,
-                body: helpMessage,
-            });
+
+            await postPullRequestComment(owner, repo, pullNumber, helpMessage, authMode, installationId);
             break;
         }
-        
+
         case "unknown": {
-            await octokit.rest.issues.createComment({
-                owner,
-                repo,
-                issue_number: pullNumber,
-                body: `Unknown command \`@diffie ${command.rawCommand}\`. Type \`@diffie help\` to see supported commands.`,
-            });
+            const unknownMsg = `Unknown command \`@diffie ${command.rawCommand}\`. Type \`@diffie help\` to see supported commands.`;
+            await postPullRequestComment(owner, repo, pullNumber, unknownMsg, authMode, installationId);
             break;
         }
     }
