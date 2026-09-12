@@ -122,3 +122,50 @@ export async function reviewWithGroq(diffText: string, apiKey: string): Promise<
         return { summary: "Failed to parse Groq review.", issues: [] };
     }
 }
+
+export async function explainConcept(
+    topic: string,
+    apiKey: string,
+    provider: "gemini" | "groq" = "gemini"
+): Promise<string> {
+    const prompt = `You are a senior software engineer. A developer asked for an explanation on the following topic or code issue:
+
+"${topic}"
+
+Provide a clear, detailed, beginner-friendly explanation covering:
+1. What this concept or issue means.
+2. Why it matters for code quality, performance, or security.
+3. A short, concrete code example showing the wrong way vs the correct way to write it.
+
+Keep the response concise and formatted in GitHub markdown. Do not use any emoji icons.`;
+
+    if (provider === "groq") {
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                model: "llama-3.1-70b-versatile",
+                messages: [{ role: "user", content: prompt }],
+            }),
+        });
+        const data = await res.json();
+        return data.choices[0]?.message?.content || "Could not generate explanation.";
+    }
+
+    // Default: Gemini API
+    const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+            }),
+        }
+    );
+    const data = await res.json();
+    return data.candidates[0]?.content?.parts[0]?.text || "Could not generate explanation.";
+}

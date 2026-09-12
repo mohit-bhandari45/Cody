@@ -5,6 +5,8 @@ import { reviewQueue } from "../queue/reviewQueue";
 import { resolveToken } from "./helper";
 import { postPullRequestComment } from "./githubapis";
 import { GitHubAuthMode } from "./appAuth";
+import { getRepoSettings } from "../db/repoSettings";
+import { explainConcept } from "../llm/client";
 
 export interface CommandContext {
     command: DiffieCommand;
@@ -102,6 +104,32 @@ export async function handleSlashCommand(ctx: CommandContext) {
         case "unknown": {
             const unknownMsg = `Unknown command \`@diffie ${command.rawCommand}\`. Type \`@diffie help\` to see supported commands.`;
             await postPullRequestComment(owner, repo, pullNumber, unknownMsg, authMode, installationId);
+            break;
+        }
+
+        case "explain": {
+            const topic = command.targetText || "the review feedback and code quality best practices";
+
+            const dbSettings = await getRepoSettings(owner, repo);
+            const apiKey = dbSettings?.gemini_api_key || dbSettings?.groq_api_key || process.env.GEMINI_API_KEY || process.env.GROQ_API_KEY;
+
+            if (!apiKey) {
+                await postPullRequestComment(
+                    owner,
+                    repo,
+                    pullNumber,
+                    "No API key configured for this repository. Please configure a key in the Diffie dashboard.",
+                    authMode,
+                    installationId
+                );
+                break;
+            }
+
+            const provider = dbSettings?.gemini_api_key ? "gemini" : "groq";
+            
+            const explanation = await explainConcept(topic, apiKey, provider);
+            const explanationMessage = `### Explanation: ${topic}\n\n${explanation}`;
+            await postPullRequestComment(owner, repo, pullNumber, explanationMessage, authMode, installationId);
             break;
         }
     }
