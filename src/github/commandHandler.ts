@@ -92,18 +92,13 @@ export async function handleSlashCommand(ctx: CommandContext) {
         }
 
         case "help": {
-            const helpMessage = `### 🤖 Diffie Commands Reference
+            const helpMessage = `### Diffie Commands Reference
 
 - **\`@diffie review\`** — Trigger an immediate AI code review on this PR.
-- **\`@diffie help\`** — Show this menu.`;
+- **\`@diffie explain <topic>\`** — Request an in-depth AI explanation for a code concept or bug.
+- **\`@diffie help\`** — Show this command reference.`;
 
             await postPullRequestComment(owner, repo, pullNumber, helpMessage, authMode, installationId);
-            break;
-        }
-
-        case "unknown": {
-            const unknownMsg = `Unknown command \`@diffie ${command.rawCommand}\`. Type \`@diffie help\` to see supported commands.`;
-            await postPullRequestComment(owner, repo, pullNumber, unknownMsg, authMode, installationId);
             break;
         }
 
@@ -126,10 +121,16 @@ export async function handleSlashCommand(ctx: CommandContext) {
             }
 
             const provider = dbSettings?.gemini_api_key ? "gemini" : "groq";
-            
+
             const explanation = await explainConcept(topic, apiKey, provider);
             const explanationMessage = `### Explanation: ${topic}\n\n${explanation}`;
             await postPullRequestComment(owner, repo, pullNumber, explanationMessage, authMode, installationId);
+            break;
+        }
+
+        case "unknown": {
+            const unknownMsg = `Unknown command \`@diffie ${command.rawCommand}\`. Type \`@diffie help\` to see supported commands.`;
+            await postPullRequestComment(owner, repo, pullNumber, unknownMsg, authMode, installationId);
             break;
         }
     }
