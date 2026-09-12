@@ -104,16 +104,30 @@ export async function reviewWithGroq(diffText: string, apiKey: string): Promise<
         apiKey,
         baseURL: "https://api.groq.com/openai/v1"
     });
-    const response = await groqClient.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
-        response_format: { type: "json_object" },
-        messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: `Diff:\n${diffText}` }
-        ]
-    });
+    
+    let rawText = "{}";
+    try {
+        const response = await groqClient.chat.completions.create({
+            model: "llama-3.1-8b-instant",
+            response_format: { type: "json_object" },
+            messages: [
+                { role: "system", content: SYSTEM_PROMPT },
+                { role: "user", content: `Diff:\n${diffText}` }
+            ]
+        });
+        rawText = response.choices[0]?.message?.content ?? "{}";
+    } catch (err) {
+        const response = await groqClient.chat.completions.create({
+            model: "llama3-70b-8192",
+            response_format: { type: "json_object" },
+            messages: [
+                { role: "system", content: SYSTEM_PROMPT },
+                { role: "user", content: `Diff:\n${diffText}` }
+            ]
+        });
+        rawText = response.choices[0]?.message?.content ?? "{}";
+    }
 
-    const rawText = response.choices[0].message.content ?? "{}";
     try {
         const parsed = JSON.parse(rawText) as ReviewResult;
         parsed.issues.forEach(i => i.provider = "groq");
@@ -142,7 +156,7 @@ Keep the response concise and formatted in GitHub markdown. Do not use any emoji
     // 1. Try Gemini first if key available
     if (geminiKey) {
         try {
-            console.log(`Generating AI explanation for topic: "${topic}" using Gemini`);
+            console.log(`Generating AI explanation for topic using Gemini`);
             const geminiAi = new GoogleGenAI({ apiKey: geminiKey });
             const response = await geminiAi.models.generateContent({
                 model: "gemini-3.6-flash",
@@ -151,27 +165,31 @@ Keep the response concise and formatted in GitHub markdown. Do not use any emoji
 
             if (response.text) return response.text;
         } catch (geminiErr: any) {
-            console.warn(`Gemini explanation failed (${geminiErr.status || geminiErr.message}). Falling back to Groq if available...`);
+            console.warn(`Gemini explanation failed (${geminiErr.status || geminiErr.message}). Falling back to Groq...`);
         }
     }
 
     // 2. Fallback to Groq if key available
     if (groqKey) {
-        try {
-            console.log(`Generating AI explanation for topic: "${topic}" using Groq (Llama 3.3 70B)`);
-            const groqClient = new OpenAI({
-                apiKey: groqKey,
-                baseURL: "https://api.groq.com/openai/v1",
-            });
-            const response = await groqClient.chat.completions.create({
-                model: "llama-3.3-70b-versatile",
-                messages: [{ role: "user", content: prompt }],
-            });
+        const groqModels = ["llama-3.1-8b-instant", "llama3-70b-8192"];
+        const groqClient = new OpenAI({
+            apiKey: groqKey,
+            baseURL: "https://api.groq.com/openai/v1",
+        }); 
 
-            const content = response.choices[0]?.message?.content;
-            if (content) return content;
-        } catch (groqErr: any) {
-            console.warn(`Groq explanation failed:`, groqErr);
+        for (const model of groqModels) {
+            try {
+                console.log(`Generating AI explanation using Groq (${model})`);
+                const response = await groqClient.chat.completions.create({
+                    model,
+                    messages: [{ role: "user", content: prompt }],
+                });
+
+                const content = response.choices[0]?.message?.content;
+                if (content) return content;
+            } catch (groqErr: any) {
+                console.warn(`Groq explanation model ${model} failed:`, groqErr.message || groqErr);
+            }
         }
     }
 
