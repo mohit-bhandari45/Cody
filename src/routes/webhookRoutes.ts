@@ -3,6 +3,8 @@ import { verifyGithubSignature } from "../verifySignature";
 import { updatePrStatus } from "../db/prReviews";
 import { resolveInstallationId } from "../helpers/helper";
 import { reviewQueue } from "../queue/reviewQueue";
+import { parseSlashCommand } from "../github/commandParser";
+import { handleSlashCommand } from "../github/commandHandler";
 
 export const webhookRouter = Router();
 
@@ -22,6 +24,41 @@ webhookRouter.post("/", async (req: Request, res: Response) => {
     }
 
     res.status(200).json({ received: true });
+
+    if (event === "issue_comment") {
+        const action = req.body.action;
+        const issue = req.body.issue;
+        const comment = req.body.comment;
+        const repo = req.body.repository;
+
+        if (action !== "created" || !issue.pull_request) {
+            return;
+        }
+
+        if (comment.user?.type === "Bot") {
+            return;
+        }
+
+        const command = parseSlashCommand(comment.body);
+        if (!command) return;
+
+        console.log(`[slash_command:${command.type}] PR #${issue.number} by @${comment.user.login}`);
+        const installationId = resolveInstallationId(req.body);
+
+        await handleSlashCommand({
+            command,
+            owner: repo.owner.login,
+            repo: repo.name,
+            pullNumber: issue.number,
+            commentId: comment.id,
+            commentBody: comment.body,
+            userLogin: comment.user.login,
+            installationId: installationId || 0,
+            authMode,
+        });
+
+        return;
+    }
 
     if (event !== "pull_request") {
         console.log(`Ignore event: ${event}`);
